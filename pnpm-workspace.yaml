@@ -1,5 +1,7 @@
 packages:
-  - '.'
+  - 'wedding-pria'
+  - 'wedding-wanita'
+  - 'admin-dashboard'
 
 allowBuilds:
   esbuild: true

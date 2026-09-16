@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-emerald-deep: #061910;
+    --color-emerald-card: #0b291b;
+    --color-gold: #d4af37;
+    --color-gold-light: #f5e7a9;
+    --color-parchment: #fcf8f0;
+    --color-parchment-card: #f7f1e3;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  body {
+    background-color: #061910;
+    color: #2b2b2b;
+    overflow-x: hidden;
+  }
+
+  /* Sembunyikan scrollbar biar clean — scroll tetap jalan */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  /* Luxury Gold Gradient Text */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #dfc259 0%, #d4af37 40%, #fff2b2 60%, #c59b27 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gold-subtle {
+    background: linear-gradient(135deg, #c5a059 0%, #e2c889 50%, #b89347 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-emerald-gradient {
+    background: linear-gradient(135deg, #092318 0%, #1c553e 50%, #0e3122 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Luxury Gold Card Borders */
+  .gold-border {
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 15px rgba(212, 175, 55, 0.12);
+  }
+
+  .gold-border-glow {
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 25px rgba(212, 175, 55, 0.25);
+  }
+
+  .gold-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.6) 50%, transparent 100%);
+  }
+
+  /* Luxury Parchment Card */
+  .parchment-card {
+    background: #faf6ee;
+    background-image: 
+      radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.05) 0%, transparent 30%),
+      radial-gradient(circle at 0% 0%, rgba(27, 67, 50, 0.04) 0%, transparent 30%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), inset 0 0 40px rgba(235, 217, 196, 0.3);
+  }
+
+  .emerald-card {
+    background: linear-gradient(160deg, #0d2e20 0%, #071e14 100%);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(212, 175, 55, 0.2);
+  }
+
+  /* Glassmorphism for Dark emerald */
+  .glass-emerald {
+    background: rgba(9, 35, 24, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+  }
+
+  .glass-light {
+    background: rgba(253, 251, 248, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+
+  /* Gold Button */
+  .btn-gold {
+    background: linear-gradient(135deg, #dfc259 0%, #d4af37 50%, #be9422 100%);
+    color: #061910;
+    font-weight: 600;
+    border: 1px solid #f3e5ab;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-gold:hover {
+    background: linear-gradient(135deg, #f5e7a9 0%, #dfc259 50%, #d4af37 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5);
+  }
+
+  .btn-gold:active {
+    transform: translateY(0);
+  }
+
+  .btn-emerald {
+    background: linear-gradient(135deg, #143f2d 0%, #0a251a 100%);
+    color: #f3e5ab;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .btn-emerald:hover {
+    background: linear-gradient(135deg, #1c553e 0%, #0e3122 100%);
+    border-color: #d4af37;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.25);
+  }
+}
+
+/* Animations */
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 18s linear infinite;
+}
+
+.shimmer-badge {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.3) 50%, rgba(212, 175, 55, 0.1) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
+}
+
+/* Floating Leaves / Sparkles */
+.petal {
+  position: absolute;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.8) 0%, rgba(212, 175, 55, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: fall linear infinite;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(-5vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(105vh) translateX(60px) rotate(360deg);
+    opacity: 0;
+  }
+}
