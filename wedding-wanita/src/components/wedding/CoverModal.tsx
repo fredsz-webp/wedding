@@ -13,7 +13,7 @@ interface CoverModalProps {
 const DOOR_MS = 1050;
 
 /** Aset pintu — di-preload agar animasi buka tidak delay bolong */
-const DOOR_ASSETS = ['/assets/wedding/1.png', '/assets/wedding/4.png', '/assets/wedding/3.png'];
+const DOOR_ASSETS = ['/assets/wedding/1.webp', '/assets/wedding/4.webp', '/assets/wedding/3.webp'];
 
 function preloadImages(srcs: string[], timeoutMs = 8000): Promise<void> {
   return new Promise((resolve) => {
@@ -141,7 +141,7 @@ export const CoverModal: React.FC<CoverModalProps> = ({
             >
               <div className="relative h-full w-full">
                 <img
-                  src="/assets/wedding/1.png"
+                  src="/assets/wedding/1.webp"
                   alt=""
                   draggable={false}
                   className="pointer-events-none absolute inset-0 h-full w-full"
@@ -198,7 +198,7 @@ export const CoverModal: React.FC<CoverModalProps> = ({
             >
               <div className="relative h-full w-full">
                 <img
-                  src="/assets/wedding/4.png"
+                  src="/assets/wedding/4.webp"
                   alt=""
                   draggable={false}
                   className="pointer-events-none absolute inset-0 h-full w-full"
@@ -243,7 +243,7 @@ export const CoverModal: React.FC<CoverModalProps> = ({
                     />
                     <span className="absolute inset-0 rounded-full bg-[#e8b84a]/30 blur-md" />
                     <img
-                      src="/assets/wedding/3.png"
+                      src="/assets/wedding/3.webp"
                       alt=""
                       className="relative z-10 h-16 w-16 object-contain drop-shadow-[0_5px_12px_rgba(0,0,0,0.55)] sm:h-[4.5rem] sm:w-[4.5rem]"
                     />

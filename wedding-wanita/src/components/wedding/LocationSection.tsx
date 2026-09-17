@@ -115,7 +115,7 @@ export const LocationSection: React.FC = () => {
               className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-emerald-900/20 bg-cream-300 transition-all hover:border-gold-500"
             >
               <img
-                src="/assets/wedding/11.png"
+                src="/assets/wedding/11.webp"
                 alt="Denah Lokasi Pernikahan"
                 className="max-h-[380px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.01]"
               />
@@ -203,7 +203,7 @@ export const LocationSection: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <img
-                src="/assets/wedding/11.png"
+                src="/assets/wedding/11.webp"
                 alt="Denah Lokasi Full"
                 className="mx-auto max-h-[85vh] max-w-full object-contain"
               />

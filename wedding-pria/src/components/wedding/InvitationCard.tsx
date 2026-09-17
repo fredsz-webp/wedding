@@ -70,7 +70,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
     >
       {/* ── Background joglo — full bleed, mencakup krem + border + ilustrasi ── */}
       <img
-        src="/assets/wedding/7.png"
+        src="/assets/wedding/7.webp"
         alt=""
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[1] h-full w-full"
@@ -79,7 +79,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
 
       {/* ── Merpati — kanan tengah, sedikit keluar tepi ── */}
       <img
-        src="/assets/wedding/9.png"
+        src="/assets/wedding/9.webp"
         alt=""
         aria-hidden
         className="pointer-events-none absolute z-[15]"
