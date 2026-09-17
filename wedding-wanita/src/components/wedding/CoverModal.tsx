@@ -12,6 +12,39 @@ interface CoverModalProps {
 
 const DOOR_MS = 1050;
 
+/** Aset pintu — di-preload agar animasi buka tidak delay bolong */
+const DOOR_ASSETS = ['/assets/wedding/1.png', '/assets/wedding/4.png', '/assets/wedding/3.png'];
+
+function preloadImages(srcs: string[], timeoutMs = 8000): Promise<void> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        resolve();
+      }
+    };
+    const timer = window.setTimeout(finish, timeoutMs);
+    let loaded = 0;
+    if (srcs.length === 0) {
+      window.clearTimeout(timer);
+      finish();
+      return;
+    }
+    srcs.forEach((src) => {
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        loaded += 1;
+        if (loaded >= srcs.length) {
+          window.clearTimeout(timer);
+          finish();
+        }
+      };
+      img.src = src;
+    });
+  });
+}
+
 /** Hanya pintu + bebek — kartu undangan ada di Hero di belakang */
 export const CoverModal: React.FC<CoverModalProps> = ({
   isOpen,
@@ -23,6 +56,18 @@ export const CoverModal: React.FC<CoverModalProps> = ({
   const [doorsOpen, setDoorsOpen] = useState(animateClose);
   const [showDuck, setShowDuck] = useState(!animateClose);
   const [isOpening, setIsOpening] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
+
+  // Preload gambar pintu sekali — pintu baru tampil setelah aset siap.
+  useEffect(() => {
+    let cancelled = false;
+    preloadImages(DOOR_ASSETS).then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -58,7 +103,7 @@ export const CoverModal: React.FC<CoverModalProps> = ({
   }, [isOpen, animateClose, onCloseAnimDone]);
 
   const handleOpen = () => {
-    if (isOpening || doorsOpen || !showDuck) return;
+    if (isOpening || doorsOpen || !showDuck || !assetsReady) return;
     setIsOpening(true);
     setShowDuck(false);
     setDoorsOpen(true);
@@ -81,7 +126,9 @@ export const CoverModal: React.FC<CoverModalProps> = ({
             className="relative mx-auto h-[100dvh] w-full max-w-[420px] overflow-hidden sm:h-[min(900px,96dvh)] sm:rounded-2xl"
             style={{ perspective: '1400px' }}
           >
-            {/* LEFT DOOR */}
+            {assetsReady && (
+              <>
+              {/* LEFT DOOR */}
             <motion.div
               className="absolute bottom-0 left-0 top-0 z-20 w-1/2 origin-left will-change-transform"
               initial={false}
@@ -168,9 +215,11 @@ export const CoverModal: React.FC<CoverModalProps> = ({
                 </div>
               </div>
             </motion.div>
+              </>
+            )}
 
             <AnimatePresence>
-              {showDuck && !doorsOpen && (
+              {showDuck && !doorsOpen && assetsReady && (
                 <motion.button
                   type="button"
                   aria-label="Buka undangan"
@@ -200,6 +249,28 @@ export const CoverModal: React.FC<CoverModalProps> = ({
                     />
                   </motion.span>
                 </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Loading — tampil selama aset pintu diunduh */}
+            <AnimatePresence>
+              {!assetsReady && (
+                <motion.div
+                  key="door-loading"
+                  className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-emerald-950"
+                  initial={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0 } }}
+                >
+                  <motion.span
+                    className="relative flex h-16 w-16 items-center justify-center"
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
+                  >
+                    <span className="absolute inset-0 rounded-full border-2 border-[#e8b84a]/20" />
+                    <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#e8b84a]" />
+                    <span className="font-script text-[22px] leading-none text-[#e8b84a]">YF</span>
+                  </motion.span>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
