@@ -83,15 +83,16 @@ service cloud.firestore {
     // Koleksi pengguna dashboard (doc id = email lowercase).
     // - Baca 1 dokumen: user yang login boleh baca dokumennya sendiri (untuk cek role),
     //   admin boleh baca semua.
-    // - Daftar mandiri: user login boleh membuat DOKUMENNYA SENDIRI hanya sebagai "pending".
+    // - Buat: admin, atau daftar mandiri (dokumen sendiri, hanya sebagai "pending").
     // - List/ubah/hapus: hanya admin.
     match /users/{userId} {
       allow get: if request.auth != null && (callerEmail() == userId || isAdmin());
       allow list: if isAdmin();
-      allow create: if request.auth != null
-        && callerEmail() == userId
-        && request.resource.data.email == callerEmail()
-        && request.resource.data.role == 'pending';
+      allow create: if isAdmin()
+        || (request.auth != null
+          && callerEmail() == userId
+          && request.resource.data.email == callerEmail()
+          && request.resource.data.role == 'pending');
       allow update, delete: if isAdmin();
     }
   }
