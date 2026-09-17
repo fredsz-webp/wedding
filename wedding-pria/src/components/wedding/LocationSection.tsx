@@ -5,7 +5,7 @@ import { Navigation, Copy, Check, ExternalLink } from 'lucide-react';
 export const LocationSection: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
-  const addressText = 'Dusun Tempel, RT.25/RW.06, Plumbon, Kec. Suruh, Kab. Semarang, Jawa Tengah';
+  const addressText = 'Dusun Singkil, RT.02/RW.03, Desa Karanggondang, Kec. Pabelan, Kab. Semarang, Jawa Tengah';
   const mapsUrl = 'https://maps.app.goo.gl/f6CcFwUGBJvimDrz9';
 
   const handleCopyAddress = () => {
