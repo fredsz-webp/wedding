@@ -1,4 +1,27 @@
 import React from 'react';
+import { useGuest } from '../../lib/guest';
+
+/** Kotak centang jadwal — tercentang otomatis sesuai data tamu di dashboard */
+const EventCheck: React.FC<{ checked: boolean }> = ({ checked }) => (
+  <span
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 11,
+      height: 11,
+      border: '1.5px solid #111',
+      background: checked ? '#1a1a1a' : 'transparent',
+      color: '#e8c34a',
+      fontSize: 9,
+      lineHeight: 1,
+      flexShrink: 0,
+      marginTop: 1,
+    }}
+  >
+    {checked ? '✓' : ''}
+  </span>
+);
 
 /** Ornament scrollwork SVG — cermin kiri/kanan */
 const Flourish: React.FC<{ flip?: boolean }> = ({ flip = false }) => (
@@ -36,6 +59,10 @@ const Flourish: React.FC<{ flip?: boolean }> = ({ flip = false }) => (
 export const InvitationCard: React.FC<{ className?: string }> = ({
   className = '',
 }) => {
+  const { events } = useGuest();
+  const isInvited = (eventId: string) =>
+    events === null ? false : events.length === 0 || events.includes(eventId);
+
   return (
     <div
       className={`relative flex h-full min-h-0 flex-col overflow-hidden ${className}`}
@@ -59,7 +86,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
         style={{
           right: '-2%',
           top: '28%',
-          height: '17%',
+          height: '11%',
           width: 'auto',
           objectFit: 'contain',
           opacity: 0.92,
@@ -276,16 +303,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
               paddingLeft: 20,
             }}
           >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 11,
-                height: 11,
-                border: '1.5px solid #111',
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            />
+            <EventCheck checked={isInvited('wanita-3-okt')} />
             <p
               style={{
                 fontFamily: 'Georgia, serif',
@@ -306,16 +324,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
               paddingLeft: 20,
             }}
           >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 11,
-                height: 11,
-                border: '1.5px solid #111',
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            />
+            <EventCheck checked={isInvited('wanita-4-okt')} />
             <p
               style={{
                 fontFamily: 'Georgia, serif',

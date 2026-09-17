@@ -3,6 +3,7 @@ import CoverModal from './components/wedding/CoverModal';
 import HeroSection from './components/wedding/HeroSection';
 import StorySection from './components/wedding/StorySection';
 import LocationSection from './components/wedding/LocationSection';
+import RsvpSection from './components/wedding/RsvpSection';
 import BottomNav from './components/wedding/BottomNav';
 import TopControls from './components/wedding/TopControls';
 import FloatingPetals from './components/wedding/FloatingPetals';
@@ -75,6 +76,7 @@ export function App() {
             <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain pb-[4.75rem]">
               {activeSection === 'kisah' && <StorySection scrollContainer={scrollRef} />}
               {activeSection === 'lokasi' && <LocationSection />}
+              {activeSection === 'rsvp' && <RsvpSection side="pria" />}
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGuest } from '../../lib/guest';
 
 interface CoverModalProps {
   isOpen: boolean;
@@ -18,18 +19,10 @@ export const CoverModal: React.FC<CoverModalProps> = ({
   animateClose = false,
   onCloseAnimDone,
 }) => {
-  const [guestName, setGuestName] = useState('Tamu Undangan');
+  const guestName = useGuest().name;
   const [doorsOpen, setDoorsOpen] = useState(animateClose);
   const [showDuck, setShowDuck] = useState(!animateClose);
   const [isOpening, setIsOpening] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const nameParam = params.get('to') || params.get('guest') || params.get('u') || params.get('nama');
-    if (nameParam) {
-      setGuestName(decodeURIComponent(nameParam.replace(/\+/g, ' ')));
-    }
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;

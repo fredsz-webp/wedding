@@ -1,1 +1,1 @@
-export type WeddingSection = 'hero' | 'kisah' | 'lokasi';
+export type WeddingSection = 'hero' | 'kisah' | 'lokasi' | 'rsvp';

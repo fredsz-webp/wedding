@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, BookOpen, MapPin } from 'lucide-react';
+import { Home, BookOpen, MapPin, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { WeddingSection } from './types';
 
@@ -7,6 +7,7 @@ const navItems: { id: WeddingSection; label: string; icon: typeof Home }[] = [
   { id: 'hero', label: 'Home', icon: Home },
   { id: 'kisah', label: 'Kisah', icon: BookOpen },
   { id: 'lokasi', label: 'Lokasi', icon: MapPin },
+  { id: 'rsvp', label: 'RSVP', icon: Heart },
 ];
 
 interface BottomNavProps {

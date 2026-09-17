@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Role dibaca dari collection `users` (doc id = email login, huruf kecil).
+    // Alur: login Google pertama otomatis mendaftarkan diri sebagai "pending".
+    // Admin pertama: ubah role dokumen sendiri menjadi "admin" via Console,
+    // akun berikutnya bisa di-approve dari menu Kelola Pengguna.
+
+    function callerEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function callerDoc() {
+      return get(/databases/$(database)/documents/users/$(callerEmail()));
+    }
+
+    function hasRole(roles) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(callerEmail()))
+        && callerDoc().data.role in roles;
+    }
+
+    /** admin + panitia */
+    function isStaff() {
+      return hasRole(['admin', 'panitia']);
+    }
+
+    /** admin saja */
+    function isAdmin() {
+      return hasRole(['admin']);
+    }
+
+    // Koleksi tamu undangan.
+    // - Baca publik agar undangan (?u=slug) bisa menampilkan nama resmi tanpa login.
+    // - Tulis (tambah/edit) hanya staf. Hapus hanya admin.
+    // - Pengecualian: pengunjung undangan (tanpa login) boleh menandai "sudah dibuka"
+    //   — HANYA field opened/openedAt/viewCount/updatedAt, tidak bisa ubah lainnya.
+    match /guests/{guestId} {
+      allow get, list: if true;
+      allow create, update: if isStaff();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['opened', 'openedAt', 'viewCount', 'updatedAt'])
+        && request.resource.data.opened == true;
+      allow delete: if isAdmin();
+    }
+
+    // Koleksi RSVP & ucapan dari tamu (ditulis publik dari web undangan).
+    // - Baca publik agar daftar ucapan bisa tampil di undangan.
+    // - Buat: siapa pun (validasi ketat).
+    // - Ubah: admin, atau pemilik link (hanya field isi, slug tidak boleh berubah).
+    // - Hapus: hanya admin.
+    match /rsvps/{rsvpId} {
+      allow get, list: if true;
+      allow create: if request.resource.data.guestName is string
+        && request.resource.data.guestName.size() >= 1
+        && request.resource.data.guestName.size() <= 60
+        && request.resource.data.attending is bool
+        && request.resource.data.pax is number
+        && request.resource.data.pax >= 1
+        && request.resource.data.pax <= 10
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 500
+        && request.resource.data.guestSlug is string
+        && request.resource.data.side is string;
+      allow update: if isAdmin() || (
+        resource.data.guestSlug is string
+        && resource.data.guestSlug != ''
+        && request.resource.data.guestSlug == resource.data.guestSlug
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestName', 'attending', 'pax', 'message', 'updatedAt'])
+        && request.resource.data.guestName is string
+        && request.resource.data.guestName.size() >= 1
+        && request.resource.data.guestName.size() <= 60
+        && request.resource.data.attending is bool
+        && request.resource.data.pax is number
+        && request.resource.data.pax >= 1
+        && request.resource.data.pax <= 10
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 500
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Koleksi pengguna dashboard (doc id = email lowercase).
+    // - Baca 1 dokumen: user yang login boleh baca dokumennya sendiri (untuk cek role),
+    //   admin boleh baca semua.
+    // - Daftar mandiri: user login boleh membuat DOKUMENNYA SENDIRI hanya sebagai "pending".
+    // - List/ubah/hapus: hanya admin.
+    match /users/{userId} {
+      allow get: if request.auth != null && (callerEmail() == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if request.auth != null
+        && callerEmail() == userId
+        && request.resource.data.email == callerEmail()
+        && request.resource.data.role == 'pending';
+      allow update, delete: if isAdmin();
+    }
+  }
+}

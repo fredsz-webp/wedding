@@ -1,4 +1,27 @@
 import React from 'react';
+import { useGuest } from '../../lib/guest';
+
+/** Kotak centang jadwal — tercentang otomatis sesuai data tamu di dashboard */
+const EventCheck: React.FC<{ checked: boolean }> = ({ checked }) => (
+  <span
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 11,
+      height: 11,
+      border: '1.5px solid #111',
+      background: checked ? '#1a1a1a' : 'transparent',
+      color: '#e8c34a',
+      fontSize: 9,
+      lineHeight: 1,
+      flexShrink: 0,
+      marginTop: 1,
+    }}
+  >
+    {checked ? '✓' : ''}
+  </span>
+);
 
 /** Ornament scrollwork SVG — cermin kiri/kanan */
 const Flourish: React.FC<{ flip?: boolean }> = ({ flip = false }) => (
@@ -36,6 +59,10 @@ const Flourish: React.FC<{ flip?: boolean }> = ({ flip = false }) => (
 export const InvitationCard: React.FC<{ className?: string }> = ({
   className = '',
 }) => {
+  const { events } = useGuest();
+  // Tamu lama tanpa field events dianggap diundang (default).
+  const invited11 = events === null ? false : events.length === 0 || events.includes('pria-11-okt');
+
   return (
     <div
       className={`relative flex h-full min-h-0 flex-col overflow-hidden ${className}`}
@@ -59,7 +86,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
         style={{
           right: '-2%',
           top: '28%',
-          height: '17%',
+          height: '11%',
           width: 'auto',
           objectFit: 'contain',
           opacity: 0.92,
@@ -167,7 +194,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
           keluarga yang sakinah, mawaddah, warahmah.
         </p>
 
-        {/* Nama pengantin wanita */}
+        {/* Nama pengantin pria (di atas) */}
         <p
           style={{
             fontFamily: 'Georgia, serif',
@@ -180,7 +207,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 3,
           }}
         >
-          Aprilia Faragita
+          Khoyrul Yusuf Maulana
         </p>
         <p
           style={{
@@ -191,7 +218,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 8,
           }}
         >
-          Putri Pertama dari Bapak. Sutrisno &amp; Ibu Tri Widyati
+          Putra Pertama dari Bapak. Suwarno &amp; Ibu Tugiyah
         </p>
 
         {/* Divider ornamen + Dengan */}
@@ -220,7 +247,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
           <Flourish flip />
         </div>
 
-        {/* Nama pengantin pria */}
+        {/* Nama pengantin wanita */}
         <p
           style={{
             fontFamily: 'Georgia, serif',
@@ -233,7 +260,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 3,
           }}
         >
-          Khoyrul Yusuf Maulana
+          Aprilia Faragita
         </p>
         <p
           style={{
@@ -244,7 +271,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 10,
           }}
         >
-          Putra Pertama dari Bapak. Suwarno &amp; Ibu Tugiyah
+          Putri Pertama dari Bapak. Sutrisno &amp; Ibu Tri Widyati
         </p>
 
         {/* Kalimat pengantar jadwal */}
@@ -266,38 +293,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
           className="relative z-[5] w-full"
           style={{ marginBottom: 8 }}
         >
-          {/* Jadwal item 1 */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 8,
-              marginBottom: 6,
-              paddingLeft: 20,
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 11,
-                height: 11,
-                border: '1.5px solid #111',
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            />
-            <p
-              style={{
-                fontFamily: 'Georgia, serif',
-                fontSize: 'clamp(9px,2.3vw,10.5px)',
-                color: '#111',
-                lineHeight: 1.5,
-              }}
-            >
-              Sabtu, 3 Oktober 2026 &nbsp;&nbsp; Pukul: 08.00-19.00
-            </p>
-          </div>
-          {/* Jadwal item 2 */}
+          {/* Jadwal */}
           <div
             style={{
               display: 'flex',
@@ -306,16 +302,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
               paddingLeft: 20,
             }}
           >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 11,
-                height: 11,
-                border: '1.5px solid #111',
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            />
+            <EventCheck checked={invited11} />
             <p
               style={{
                 fontFamily: 'Georgia, serif',
@@ -324,9 +311,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
                 lineHeight: 1.5,
               }}
             >
-              Minggu, 4 Oktober 2026 &nbsp; Pukul: 08.00-12.00WIB
-              <br />
-              Acara: Ngunduh Mantu &amp; Resepsi
+              Minggu, 11 Oktober 2026 &nbsp;&nbsp; Pukul: 13.00-20.00 WIB
             </p>
           </div>
         </div>
@@ -343,8 +328,8 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 8,
           }}
         >
-          Dusun Tempel, RT.25/RW.06<br />
-          Plumbon, Kec. Suruh
+          Dusun Singkil, RT.02/RW.03<br />
+          Desa Karanggondang, Kec. Pabelan, Kab. Semarang
         </p>
 
         {/* Teks penutup */}
@@ -374,7 +359,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
           }}
         >
           Hormat Kami,<br />
-          Keluarga Besar Sutrisno, Tri gatu, Tri Widyati, Faragita
+          Bp. Agus, Ibu Tugiyah, Khoyrul Yusuf
         </p>
         </div>
       </div>

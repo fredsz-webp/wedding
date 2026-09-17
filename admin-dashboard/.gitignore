@@ -1,0 +1,12 @@
+# deps
+node_modules/
+dist/
+*.tsbuildinfo
+
+# env (jangan commit file asli)
+.env
+.env.local
+.env.*.local
+
+# vite
+*.local
