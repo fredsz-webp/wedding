@@ -23,6 +23,7 @@ export interface RsvpEntry {
   message: string;
   guestSlug: string;
   side: string;
+  likes: number;
   createdAt: string | null;
 }
 
@@ -36,6 +37,7 @@ function toEntry(snap: QueryDocumentSnapshot<DocumentData>): RsvpEntry {
     message: String(d.message ?? ''),
     guestSlug: String(d.guestSlug ?? ''),
     side: String(d.side ?? ''),
+    likes: typeof d.likes === 'number' ? d.likes : 0,
     createdAt: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : null,
   };
 }

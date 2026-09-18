@@ -47,7 +47,8 @@ service cloud.firestore {
     // Koleksi RSVP & ucapan dari tamu (ditulis publik dari web undangan).
     // - Baca publik agar daftar ucapan bisa tampil di undangan.
     // - Buat: siapa pun (validasi ketat).
-    // - Ubah: admin, atau pemilik link (hanya field isi, slug tidak boleh berubah).
+    // - Ubah: admin, atau pemilik link (hanya field isi, slug tidak boleh berubah),
+    //   atau like (±1 pada field likes saja).
     // - Hapus: hanya admin.
     match /rsvps/{rsvpId} {
       allow get, list: if true;
@@ -76,8 +77,24 @@ service cloud.firestore {
         && request.resource.data.pax <= 10
         && request.resource.data.message is string
         && request.resource.data.message.size() <= 500
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'updatedAt'])
+        && request.resource.data.likes is number
+        && (
+          (!('likes' in resource.data) && request.resource.data.likes == 1)
+          || ('likes' in resource.data && (
+            request.resource.data.likes == resource.data.likes + 1
+            || (request.resource.data.likes == resource.data.likes - 1 && resource.data.likes > 0)
+          ))
+        )
       );
       allow delete: if isAdmin();
+    }
+
+    // Pengaturan publik (mis. data gift): baca bebas, tulis hanya admin.
+    match /settings/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     // Koleksi pengguna dashboard (doc id = email lowercase).

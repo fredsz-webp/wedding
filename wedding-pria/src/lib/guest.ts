@@ -1,16 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  collection,
-  doc,
-  getDocs,
-  increment,
-  limit,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from 'firebase/firestore';
-import { getDb } from './firebase';
+import { getApp, loadDb } from './firebase';
 
 const FALLBACK_NAME = 'Tamu Undangan';
 
@@ -36,8 +25,11 @@ async function markOpenedOnce(docId: string) {
     const key = `guest-opened-${docId}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
-    const db = getDb();
-    if (!db) return;
+    const app = getApp();
+    if (!app) return;
+    // Import malas: modul besar firebase/firestore tidak ikut bundle awal.
+    const db = await loadDb(app);
+    const { doc, updateDoc, serverTimestamp, increment } = await import('firebase/firestore');
     await updateDoc(doc(db, 'guests', docId), {
       opened: true,
       openedAt: serverTimestamp(),
@@ -59,11 +51,13 @@ export function useGuest(): GuestInfo {
 
   useEffect(() => {
     if (!slug) return;
-    const db = getDb();
-    if (!db) return;
+    const app = getApp();
+    if (!app) return;
     let cancelled = false;
     (async () => {
       try {
+        const db = await loadDb(app);
+        const { collection, getDocs, limit, query, where } = await import('firebase/firestore');
         const q = query(collection(db, 'guests'), where('slug', '==', slug), limit(1));
         const snap = await getDocs(q);
         if (cancelled || snap.empty) return;

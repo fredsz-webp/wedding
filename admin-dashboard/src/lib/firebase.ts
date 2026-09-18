@@ -19,6 +19,8 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 export const googleProvider = new GoogleAuthProvider();
+// Selalu tampilkan pilihan akun Google (tidak auto-masuk akun terakhir).
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 if (isFirebaseConfigured) {
   app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);

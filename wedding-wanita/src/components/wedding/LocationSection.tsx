@@ -116,6 +116,7 @@ export const LocationSection: React.FC = () => {
             >
               <img
                 src="/assets/wedding/11.webp"
+                loading="lazy"
                 alt="Denah Lokasi Pernikahan"
                 className="max-h-[380px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.01]"
               />
@@ -204,6 +205,7 @@ export const LocationSection: React.FC = () => {
             >
               <img
                 src="/assets/wedding/11.webp"
+                loading="lazy"
                 alt="Denah Lokasi Full"
                 className="mx-auto max-h-[85vh] max-w-full object-contain"
               />

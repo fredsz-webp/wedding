@@ -157,6 +157,7 @@ export default function RsvpsPanel({
                         }`}
                       >
                         {e.attending ? `Hadir${e.pax > 1 ? ` · ${e.pax} org` : ''}` : 'Berhalangan'}
+                      {e.likes > 0 && ` · ♥ ${e.likes}`}
                       </span>
                     </p>
                     <p className="mt-0.5 text-xs text-stone-400">

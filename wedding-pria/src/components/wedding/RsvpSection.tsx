@@ -1,11 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Heart, Loader2, Minus, Plus, Send, X } from 'lucide-react';
 import { getInstantGuestName } from '../../lib/guest';
 import {
   findRsvpBySlug,
+  isLiked,
   isRsvpConfigured,
+  likeWish,
   MIN_FILL_SECONDS,
+  setLikedId,
   submitRsvp,
   updateRsvp,
   useWishes,
@@ -23,6 +26,57 @@ function formatDate(iso: string | null): string {
   } catch {
     return '';
   }
+}
+
+/** Tombol like ucapan — 1 perangkat 1 suara, bisa unlike. */
+function LikeButton({ wish }: { wish: Wish }) {
+  const [liked, setLiked] = useState(() => isLiked(wish.id));
+  const [count, setCount] = useState(wish.likes);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+
+  // Sinkron tampilan dengan data server + status lokal (tidak pernah me-reset paksa).
+  useEffect(() => {
+    setCount(wish.likes);
+    setLiked(isLiked(wish.id));
+  }, [wish.id, wish.likes]);
+
+  const toggle = async () => {
+    if (busyRef.current || !wish.id) return;
+    // Baca status TERKINI dari guard (bukan dari state yang bisa basi),
+    // dan catat SEBELUM panggil server agar echo realtime tak me-reset.
+    const toLike = !isLiked(wish.id);
+    busyRef.current = true;
+    setBusy(true);
+    setLiked(toLike);
+    setLikedId(wish.id, toLike);
+    setCount((c) => Math.max(0, c + (toLike ? 1 : -1)));
+    try {
+      await likeWish(wish.id, toLike ? 1 : -1);
+    } catch {
+      setLiked(!toLike);
+      setLikedId(wish.id, !toLike);
+      setCount(wish.likes);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy}
+      aria-label={liked ? 'Batalkan suka' : 'Suka ucapan ini'}
+      className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 font-sans text-[11px] font-bold transition-all active:scale-95 disabled:opacity-60 ${
+        liked ? 'bg-red-500 text-white shadow' : 'bg-stone-100 text-stone-500 hover:bg-red-50 hover:text-red-500'
+      }`}
+    >
+      <Heart className={`h-3 w-3 ${liked ? 'fill-current' : ''}`} />
+      {count > 0 && <span>{count}</span>}
+    </button>
+  );
 }
 
 export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
@@ -44,6 +98,19 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
   const configured = isRsvpConfigured();
   const { wishes, loading: wishesLoading } = useWishes(side);
 
+  // Urutan: ucapan sendiri paling atas, sisanya like terbanyak dulu.
+  const sortedWishes = useMemo(() => {
+    const arr = [...wishes];
+    arr.sort((a, b) => {
+      const aOwn = slug && a.guestSlug === slug ? 0 : 1;
+      const bOwn = slug && b.guestSlug === slug ? 0 : 1;
+      if (aOwn !== bOwn) return aOwn - bOwn;
+      if (b.likes !== a.likes) return b.likes - a.likes;
+      return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
+    });
+    return arr;
+  }, [wishes, slug]);
+
   // Saat dibuka dengan link personal, cek apakah link ini sudah dipakai mengirim.
   useEffect(() => {
     if (!slug || !configured) {
@@ -55,12 +122,14 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
     findRsvpBySlug(slug).then((found) => {
       if (cancelled) return;
       if (found) {
-        // Sudah pernah kirim: tampilkan form terisi data terakhir agar bisa diubah.
+        // Sudah pernah kirim: tampilkan layar terkunci + ringkasan.
+        // Form terisi data terakhir dan dibuka via tombol "Ubah Konfirmasi".
         setExisting(found);
         setName(found.guestName);
         setAttending(found.attending);
         setPax(Math.max(1, Math.min(10, found.pax || 1)));
         setMessage(found.message);
+        setSent(true);
       }
       setChecking(false);
     });
@@ -113,6 +182,18 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
     setSent(false);
     setMessage('');
     setError(null);
+  };
+
+  /** Batalkan edit: kembalikan isian ke data terkirim lalu tutup form. */
+  const cancelEdit = () => {
+    if (existing) {
+      setName(existing.guestName);
+      setAttending(existing.attending);
+      setPax(Math.max(1, Math.min(10, existing.pax || 1)));
+      setMessage(existing.message);
+    }
+    setError(null);
+    setSent(true);
   };
 
   return (
@@ -192,30 +273,15 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                   : 'Doa restu Anda sangat berarti bagi kami.'}
               </p>
               {existing ? (
-                <>
-                  <div className="mx-auto mt-4 max-w-[36ch] rounded-2xl bg-emerald-900/5 p-4 text-left">
-                    <p className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-400">
-                      Kiriman link ini · {formatDate(existing.createdAt)}
-                    </p>
-                    <p className="mt-1 font-sans text-[13px] font-bold text-emerald-950">
-                      {existing.attending ? `Hadir${existing.pax > 1 ? ` · ${existing.pax} orang` : ''}` : 'Berhalangan'}
-                    </p>
-                    {existing.message && (
-                      <p className="mt-1 font-sans text-[13px] italic leading-relaxed text-stone-600">
-                        “{existing.message}”
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSent(false);
-                      setError(null);
-                    }}
-                    className="mt-4 rounded-full bg-emerald-900/10 px-5 py-2.5 font-cinzel text-[11px] font-semibold text-emerald-900 transition-all hover:bg-emerald-900/20 active:scale-[0.98]"
-                  >
-                    Ubah Konfirmasi
-                  </button>
-                </>
+                <button
+                  onClick={() => {
+                    setSent(false);
+                    setError(null);
+                  }}
+                  className="mt-4 rounded-full bg-emerald-900/10 px-5 py-2.5 font-cinzel text-[11px] font-semibold text-emerald-900 transition-all hover:bg-emerald-900/20 active:scale-[0.98]"
+                >
+                  Ubah Konfirmasi
+                </button>
               ) : (
                 <button
                   onClick={sendAnother}
@@ -323,20 +389,30 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                 <p className="mt-2 rounded-xl bg-red-50 p-3 font-sans text-[12.5px] font-medium text-red-700">{error}</p>
               )}
 
-              <button
-                onClick={send}
-                disabled={sending}
-                className="btn-gold mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider transition-transform active:scale-[0.98] disabled:opacity-60"
-              >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin text-emerald-950" /> : <Send className="h-4 w-4 text-emerald-950" />}
-                <span>{sending ? 'Mengirim…' : existing ? 'Perbarui Konfirmasi' : 'Kirim Konfirmasi'}</span>
-              </button>
+              <div className="mt-3 flex gap-2.5">
+                <button
+                  onClick={send}
+                  disabled={sending}
+                  className="btn-gold flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin text-emerald-950" /> : <Send className="h-4 w-4 text-emerald-950" />}
+                  <span>{sending ? 'Mengirim…' : existing ? 'Perbarui' : 'Kirim Konfirmasi'}</span>
+                </button>
+                {existing && (
+                  <button
+                    onClick={cancelEdit}
+                    className="flex-1 rounded-2xl border border-emerald-900/20 bg-white px-4 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider text-stone-500 transition-transform active:scale-[0.98]"
+                  >
+                    Batal
+                  </button>
+                )}
+              </div>
             </>
           )}
 
           <div className="gold-divider my-6"></div>
 
-          {/* Daftar ucapan */}
+          {/* Daftar ucapan — mengalir ikut halaman (tanpa kotak scroll dalam) */}
           <div>
             <h4 className="text-center font-playfair text-[19px] font-bold text-emerald-950">
               Ucapan & Doa Restu
@@ -350,9 +426,18 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                 Jadilah yang pertama mengirim ucapan.
               </p>
             ) : (
-              <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto overscroll-contain pr-1">
-                {wishes.map((w) => (
-                  <div key={w.id} className="rounded-2xl border border-emerald-900/10 bg-white p-3.5">
+              <div className="mt-4 space-y-3">
+                {sortedWishes.map((w) => {
+                  const isOwn = Boolean(slug && w.guestSlug === slug);
+                  return (
+                  <div
+                    key={w.id}
+                    className={`relative rounded-2xl border p-3.5 pb-7 ${
+                      isOwn
+                        ? 'border-gold-500 bg-gold-100 shadow-[0_0_12px_rgba(212,175,55,0.35)]'
+                        : 'border-emerald-900/10 bg-white'
+                    }`}
+                  >
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-900 font-playfair text-[15px] font-bold capitalize text-gold-300">
                         {(w.guestName.trim()[0] ?? '?').toUpperCase()}
@@ -366,18 +451,27 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                           {w.attending && w.pax > 1 ? ` · ${w.pax} orang` : ''}
                         </p>
                       </div>
-                      <span
-                        className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 font-sans text-[10.5px] font-bold ${
-                          w.attending ? 'bg-green-100 text-green-800' : 'bg-stone-100 text-stone-500'
-                        }`}
-                      >
-                        <Heart className="h-3 w-3" />
+                      <span className={`rounded-full px-2 py-1 font-sans text-[10.5px] font-bold ${w.attending ? 'bg-green-100 text-green-800' : 'bg-stone-100 text-stone-500'}`}>
                         {w.attending ? 'Hadir' : 'Berhalangan'}
                       </span>
+                      {slug ? (
+                        <LikeButton wish={w} />
+                      ) : (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-stone-100 px-2 py-1 font-sans text-[11px] font-bold text-stone-500">
+                          <Heart className="h-3 w-3" />
+                          {w.likes > 0 && <span>{w.likes}</span>}
+                        </span>
+                      )}
                     </div>
                     <p className="mt-2 font-sans text-[13px] leading-relaxed text-stone-600">{w.message}</p>
+                    {isOwn && (
+                      <span className="absolute bottom-1.5 right-2.5 rounded-full bg-emerald-900 px-2 py-0.5 font-sans text-[10px] font-bold text-gold-200">
+                        Anda
+                      </span>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

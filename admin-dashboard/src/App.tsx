@@ -12,6 +12,7 @@ import {
   Search,
   Trash2,
   Upload,
+  MoonStar,
   UserCheck,
   UserX,
   Users,
@@ -24,6 +25,7 @@ import { useGuests } from './hooks/useGuests';
 import { useRsvps } from './hooks/useRsvps';
 import UsersPanel from './components/UsersPanel';
 import RsvpsPanel from './components/RsvpsPanel';
+import GiftSettingsPanel from './components/GiftSettingsPanel';
 import {
   buildShareLink,
   buildWaShareLink,
@@ -120,7 +122,9 @@ function LoginScreen({ error, onLogin }: { error: string | null; onLogin: () => 
   return (
     <div className="flex min-h-screen items-center justify-center bg-emerald-950 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
-        <div className="mb-2 text-center text-4xl">💒</div>
+        <div className="mb-2 flex justify-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-950 text-gold-400"><MoonStar className="h-7 w-7" /></span>
+        </div>
         <h1 className="text-center text-2xl font-extrabold text-emerald-950">Admin Undangan</h1>
         <p className="mt-1 text-center text-sm text-stone-500">Yusuf &amp; Fara — kelola tamu &amp; share link</p>
 
@@ -143,11 +147,6 @@ function LoginScreen({ error, onLogin }: { error: string | null; onLogin: () => 
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon />}
           Login dengan Google
         </button>
-
-        <p className="mt-4 text-center text-[11px] text-stone-400">
-          Belum setting Firebase? Salin <code className="font-mono">.env.example</code> → <code className="font-mono">.env</code> lalu
-          isi kredensial.
-        </p>
       </div>
     </div>
   );
@@ -263,7 +262,7 @@ function Dashboard({
   const [editing, setEditing] = useState<Guest | null>(null);
   const [showBulk, setShowBulk] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'tamu' | 'rsvp' | 'pengguna'>('tamu');
+  const [tab, setTab] = useState<'tamu' | 'rsvp' | 'pengguna' | 'gift'>('tamu');
 
   /** Panitia: kelola tamu saja. Hapus tamu + kelola pengguna khusus admin. */
   const canManageUsers = access === 'admin';
@@ -310,7 +309,7 @@ function Dashboard({
       <header className="sticky top-0 z-20 border-b border-emerald-900/10 bg-emerald-950 text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-500 text-xl">💒</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-500 text-emerald-950"><MoonStar className="h-5 w-5" /></span>
             <div>
               <p className="font-extrabold leading-tight">Admin Undangan</p>
               <p className="text-xs text-emerald-100/70">Yusuf &amp; Fara · {stats.total} tamu</p>
@@ -327,7 +326,9 @@ function Dashboard({
               <p className="text-xs text-emerald-100/70">{userEmail}</p>
             </div>
             <button
-              onClick={onLogout}
+              onClick={() => {
+                if (window.confirm('Keluar dari dashboard admin?')) onLogout();
+              }}
               className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/20"
             >
               <LogOut className="h-4 w-4" /> Keluar
@@ -369,10 +370,20 @@ function Dashboard({
               Kelola Pengguna
             </button>
           )}
+          {canManageUsers && (
+            <button
+              onClick={() => setTab('gift')}
+              className={`rounded-xl px-4 py-2.5 text-sm font-bold ${tab === 'gift' ? 'bg-emerald-900 text-white' : 'bg-white text-stone-500 hover:bg-stone-100'}`}
+            >
+              Gift
+            </button>
+          )}
         </div>
 
         {tab === 'pengguna' && canManageUsers ? (
           <UsersPanel currentEmail={userEmail ?? ''} />
+        ) : tab === 'gift' && canManageUsers ? (
+          <GiftSettingsPanel />
         ) : tab === 'rsvp' ? (
           <RsvpsPanel
             entries={rsvps}
