@@ -32,6 +32,19 @@ export function App() {
     if (isOpened) prefetchWishes('pria');
   }, [isOpened]);
 
+  // Preload semua chunk menu saat idle — pindah menu tanpa spinner.
+  useEffect(() => {
+    if (!isOpened) return;
+    const t = window.setTimeout(() => {
+      void import('./components/wedding/StorySection');
+      void import('./components/wedding/LocationSection');
+      void import('./components/wedding/RsvpSection');
+      void import('./components/wedding/GiftSection');
+      void import('./components/wedding/ThanksSection');
+    }, 2000);
+    return () => window.clearTimeout(t);
+  }, [isOpened]);
+
   // Swipe/scroll di ujung konten → pindah menu (tak perlu tekan menu bawah).
   // Urutan: hero → kisah → lokasi → rsvp → gift → thanks.
   useEffect(() => {
@@ -167,13 +180,7 @@ export function App() {
         <div className="absolute inset-0 z-[45] flex items-center justify-center overflow-hidden bg-emerald-950">
           <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[420px] overflow-hidden sm:h-[min(900px,96dvh)] sm:max-h-[96dvh] sm:rounded-2xl">
             <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain pb-[4.75rem]">
-              <Suspense
-                fallback={
-                  <div className="flex items-center justify-center py-20">
-                    <span className="h-8 w-8 animate-spin rounded-full border-2 border-gold-400/20 border-t-gold-400" />
-                  </div>
-                }
-              >
+              <Suspense fallback={null}>
                 {activeSection === 'kisah' && <StorySection scrollContainer={scrollRef} />}
                 {activeSection === 'lokasi' && <LocationSection />}
                 {activeSection === 'rsvp' && <RsvpSection side="pria" />}
