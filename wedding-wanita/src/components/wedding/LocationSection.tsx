@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigation, Copy, Check, ExternalLink, ZoomIn, X } from 'lucide-react';
+import Countdown from './Countdown';
 
 const routes = [
   { step: '1', title: 'Exit Toll Salatiga', desc: 'Keluar gerbang tol menuju arah Suruh' },
@@ -176,6 +177,11 @@ export const LocationSection: React.FC = () => {
             <span className="h-px w-10 bg-gold-400/40" />
           </div>
         </motion.div>
+
+        {/* Hitung mundur */}
+        <div className="mt-6">
+          <Countdown targetIso="2026-10-03T08:00:00+07:00" label="Menuju 3 Oktober 2026" />
+        </div>
       </div>
 
       {/* LIGHTBOX MODAL FOR ZOOMED MAP */}

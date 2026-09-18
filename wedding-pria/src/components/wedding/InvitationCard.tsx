@@ -1,5 +1,24 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useGuest } from '../../lib/guest';
+
+/** Nama mempelai muncul huruf per huruf (efek panggung setelah pintu terbuka) */
+const StaggerName: React.FC<{ text: string; delay?: number }> = ({ text, delay = 1.15 }) => (
+  <span style={{ display: 'inline-block' }} aria-label={text}>
+    {text.split('').map((ch, i) => (
+      <motion.span
+        key={i}
+        aria-hidden
+        style={{ display: 'inline-block', whiteSpace: 'pre' }}
+        initial={{ opacity: 0, y: 16, rotate: 4 }}
+        animate={{ opacity: 1, y: 0, rotate: 0 }}
+        transition={{ delay: delay + i * 0.035, type: 'spring', stiffness: 260, damping: 21 }}
+      >
+        {ch}
+      </motion.span>
+    ))}
+  </span>
+);
 
 /** Kotak centang jadwal — tercentang otomatis sesuai data tamu di dashboard */
 const EventCheck: React.FC<{ checked: boolean }> = ({ checked }) => (
@@ -207,7 +226,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 3,
           }}
         >
-          Khoyrul Yusuf Maulana
+          <StaggerName text="Khoyrul Yusuf Maulana" delay={1.15} />
         </p>
         <p
           style={{
@@ -260,7 +279,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 3,
           }}
         >
-          Aprilia Faragita
+          <StaggerName text="Aprilia Faragita" delay={1.75} />
         </p>
         <p
           style={{

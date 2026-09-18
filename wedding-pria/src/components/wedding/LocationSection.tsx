@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Navigation, Copy, Check, ExternalLink } from 'lucide-react';
+import Countdown from './Countdown';
 
 export const LocationSection: React.FC = () => {
   const [copied, setCopied] = useState(false);
@@ -85,6 +86,11 @@ export const LocationSection: React.FC = () => {
               </button>
             </div>
           </div>
+
+          <div className="gold-divider my-6"></div>
+
+          {/* Hitung mundur */}
+          <Countdown targetIso="2026-10-11T13:00:00+07:00" label="Menuju 11 Oktober 2026" />
 
           <div className="gold-divider my-6"></div>
 
