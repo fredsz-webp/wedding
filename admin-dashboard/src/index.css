@@ -10,3 +10,23 @@ body {
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   background: #f4f1ea;
 }
+
+/* Anti-slop pass: hormati reduced-motion + fokus keyboard yang jelas */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #143f2d;
+  outline-offset: 2px;
+}

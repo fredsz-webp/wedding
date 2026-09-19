@@ -12,8 +12,18 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Musik 5,8MB HANYA diunduh setelah undangan dibuka (bukan saat load awal).
+  const ensureSrc = () => {
+    const el = audioRef.current;
+    if (el && !el.getAttribute('src')) {
+      el.src = '/music/pawestri.mp3';
+      el.load();
+    }
+  };
+
   useEffect(() => {
     if (autoPlayTrigger && audioRef.current) {
+      ensureSrc();
       audioRef.current
         .play()
         .then(() => setIsPlaying(true))
@@ -27,6 +37,7 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
+      ensureSrc();
       audioRef.current
         .play()
         .then(() => setIsPlaying(true))
@@ -36,7 +47,7 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
 
   return (
     <>
-      <audio ref={audioRef} src="/music/pawestri.mp3" loop preload="auto" />
+      <audio ref={audioRef} loop preload="none" />
       <motion.div
         initial={{ opacity: 0, y: -12, x: '-50%' }}
         animate={{ opacity: 1, y: 0, x: '-50%' }}
@@ -47,7 +58,7 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
           <button
             type="button"
             onClick={onCloseInvitation}
-            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950/90 text-gold-300 shadow-xl backdrop-blur-md transition-transform hover:scale-105 active:scale-95"
+            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950 text-gold-300 shadow-xl transition-transform hover:scale-105 active:scale-95"
             title="Tutup Undangan"
             aria-label="Tutup Undangan"
           >
@@ -59,7 +70,7 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
         <button
           type="button"
           onClick={togglePlay}
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950/90 shadow-xl backdrop-blur-md transition-transform hover:scale-105 active:scale-95"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950 shadow-xl transition-transform hover:scale-105 active:scale-95"
           title={isPlaying ? 'Matikan Musik' : 'Putar Musik'}
           aria-label="Toggle Music"
         >

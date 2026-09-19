@@ -10,26 +10,46 @@ const ThanksSection = lazy(() => import('./components/wedding/ThanksSection'));
 import BottomNav from './components/wedding/BottomNav';
 import TopControls from './components/wedding/TopControls';
 import FloatingPetals from './components/wedding/FloatingPetals';
+import ConfettiBurst from './components/wedding/ConfettiBurst';
 import type { WeddingSection } from './components/wedding/types';
 import { prefetchWishes } from './lib/rsvp';
+import { prefetchGift } from './lib/gift';
+
+const ORDER: WeddingSection[] = ['hero', 'kisah', 'lokasi', 'rsvp', 'gift', 'thanks'];
+const SUB_SECTIONS: WeddingSection[] = ['kisah', 'lokasi', 'rsvp', 'gift', 'thanks'];
 
 export function App() {
   const [isOpened, setIsOpened] = useState(false);
   const [audioTrigger, setAudioTrigger] = useState(false);
   const [activeSection, setActiveSection] = useState<WeddingSection>('hero');
   const [animateClose, setAnimateClose] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [confettiKey, setConfettiKey] = useState(0);
+  const confettiTimer = useRef(0);
+  // Section yang pernah dibuka tetap ter-mount (disembunyikan) agar
+  // iframe peta / state form tidak load ulang tiap pindah menu.
+  const [visited, setVisited] = useState<WeddingSection[]>(['hero']);
   const rootRef = useRef<HTMLDivElement>(null);
+  const containers = useRef(new Map<WeddingSection, HTMLDivElement>());
+  // Ref stabil untuk StorySection (butuh RefObject, bukan elemen).
+  const kisahRef = useRef<{ current: HTMLDivElement | null }>({ current: null });
   const lastSwipeNav = useRef(0);
 
-  // Tiap ganti menu, scroll kembali ke atas.
+  // Tiap ganti menu: tandai dikunjungi + scroll kontainernya ke atas.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    setVisited((v) => (v.includes(activeSection) ? v : [...v, activeSection]));
+    if (activeSection === 'hero') {
+      rootRef.current?.scrollTo?.({ top: 0 });
+    } else {
+      containers.current.get(activeSection)?.scrollTo({ top: 0 });
+    }
   }, [activeSection]);
 
-  // Prefetch ucapan setelah undangan dibuka (tidak membebani load awal).
+  // Prefetch ucapan + gift setelah undangan dibuka (siap sebelum menunya dibuka).
   useEffect(() => {
-    if (isOpened) prefetchWishes('pria');
+    if (isOpened) {
+      prefetchWishes('pria');
+      prefetchGift('pria');
+    }
   }, [isOpened]);
 
   // Preload semua chunk menu saat idle — pindah menu tanpa spinner.
@@ -42,48 +62,66 @@ export function App() {
       void import('./components/wedding/GiftSection');
       void import('./components/wedding/ThanksSection');
     }, 2000);
-    return () => window.clearTimeout(t);
+    // Panaskan peta Google segera setelah pintu dibuka agar sudah di-cache
+    // sebelum menu Lokasi dibuka — tanpa mengganggu load awal.
+    const warm = window.setTimeout(() => {
+      const f = document.createElement('iframe');
+      f.src =
+        'https://maps.google.com/maps?q=Dusun%20Singkil%2C%20Karanggondang%2C%20Pabelan%2C%20Kabupaten%20Semarang&t=&z=15&ie=UTF8&iwloc=&output=embed';
+      f.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;';
+      f.setAttribute('aria-hidden', 'true');
+      f.tabIndex = -1;
+      document.body.appendChild(f);
+      window.setTimeout(() => f.remove(), 60000);
+    }, 800);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(warm);
+    };
   }, [isOpened]);
 
   // Swipe/scroll di ujung konten → pindah menu (tak perlu tekan menu bawah).
-  // Urutan: hero → kisah → lokasi → rsvp → gift → thanks.
   useEffect(() => {
     if (!isOpened) return;
-    const order: WeddingSection[] = ['hero', 'kisah', 'lokasi', 'rsvp', 'gift', 'thanks'];
     const EDGE_PX = 8;
     const SWIPE_PX = 64;
     const COOLDOWN_MS = 900;
 
-    const go = (dir: 1 | -1) => {
-      if (Date.now() - lastSwipeNav.current < COOLDOWN_MS) return;
-      setActiveSection((cur) => {
-        const next = order.indexOf(cur) + dir;
-        if (next < 0 || next >= order.length) return cur;
-        lastSwipeNav.current = Date.now();
-        return order[next]!;
-      });
+    const activeEl = () => {
+      if (activeSection === 'hero') return null;
+      return containers.current.get(activeSection) ?? null;
     };
     const atTop = () => {
-      const el = scrollRef.current;
+      const el = activeEl();
       return !el || el.scrollTop <= EDGE_PX;
     };
     const atBottom = () => {
-      const el = scrollRef.current;
+      const el = activeEl();
       // Hero tak bisa scroll → anggap selalu di ujung.
       if (!el) return true;
       return el.scrollHeight - el.scrollTop - el.clientHeight <= EDGE_PX;
     };
 
-    const target = scrollRef.current ?? rootRef.current;
-    if (!target) return;
+    const go = (dir: 1 | -1) => {
+      if (Date.now() - lastSwipeNav.current < COOLDOWN_MS) return;
+      setActiveSection((cur) => {
+        const next = ORDER.indexOf(cur) + dir;
+        if (next < 0 || next >= ORDER.length) return cur;
+        lastSwipeNav.current = Date.now();
+        return ORDER[next]!;
+      });
+    };
 
-    // Jangan bajak scroll area bersarang (mis. daftar ucapan) yang masih bisa scroll.
+    // Jangan bajak scroll area bersarang (mis. pagination/list) yang masih bisa scroll.
     const nestedScrollable = (t: EventTarget | null, dir: 1 | -1): boolean => {
       const el = (t as HTMLElement | null)?.closest?.('[data-nested-scroll]') as HTMLElement | null;
       if (!el) return false;
       if (dir === 1) return el.scrollHeight - el.scrollTop - el.clientHeight > EDGE_PX;
       return el.scrollTop > EDGE_PX;
     };
+
+    const target = activeEl() ?? rootRef.current;
+    if (!target) return;
 
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY > 0) {
@@ -143,9 +181,15 @@ export function App() {
     setAnimateClose(false);
     setActiveSection('hero');
     setAudioTrigger(true);
+    // Ledakan konfeti menyusul pintu yang terbuka.
+    window.clearTimeout(confettiTimer.current);
+    confettiTimer.current = window.setTimeout(() => {
+      setConfettiKey((k) => k + 1);
+    }, 750);
   };
 
   const handleCloseInvitation = () => {
+    window.clearTimeout(confettiTimer.current);
     setAnimateClose(true);
     setActiveSection('hero');
     setIsOpened(false);
@@ -157,9 +201,27 @@ export function App() {
 
   const showOther = isOpened && activeSection !== 'hero';
 
+  const renderSection = (s: WeddingSection) => {
+    switch (s) {
+      case 'kisah':
+        return <StorySection scrollContainer={kisahRef} />;
+      case 'lokasi':
+        return <LocationSection />;
+      case 'rsvp':
+        return <RsvpSection side="pria" />;
+      case 'gift':
+        return <GiftSection />;
+      case 'thanks':
+        return <ThanksSection />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div ref={rootRef} className="relative h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none bg-emerald-950 font-sans text-stone-800 selection:bg-gold-500/30 selection:text-gold-200">
-      <HeroSection />
+      <HeroSection celebrate={isOpened} />
+      <ConfettiBurst burstKey={confettiKey} />
 
       <CoverModal
         isOpen={!isOpened}
@@ -170,7 +232,8 @@ export function App() {
 
       {isOpened && (
         <>
-          <FloatingPetals />
+          {/* Embun jatuh hanya di menu tertentu (kisah & thanks), bukan sejak awal */}
+          {(activeSection === 'kisah' || activeSection === 'thanks') && <FloatingPetals />}
           <TopControls onCloseInvitation={handleCloseInvitation} autoPlayTrigger={audioTrigger} />
           <BottomNav activeSection={activeSection} onNavigate={setActiveSection} />
         </>
@@ -179,15 +242,21 @@ export function App() {
       {showOther && (
         <div className="absolute inset-0 z-[45] flex items-center justify-center overflow-hidden bg-emerald-950">
           <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[420px] overflow-hidden sm:h-[min(900px,96dvh)] sm:max-h-[96dvh] sm:rounded-2xl">
-            <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain pb-[4.75rem]">
-              <Suspense fallback={null}>
-                {activeSection === 'kisah' && <StorySection scrollContainer={scrollRef} />}
-                {activeSection === 'lokasi' && <LocationSection />}
-                {activeSection === 'rsvp' && <RsvpSection side="pria" />}
-                {activeSection === 'gift' && <GiftSection />}
-                {activeSection === 'thanks' && <ThanksSection />}
-              </Suspense>
-            </div>
+            {SUB_SECTIONS.filter((s) => visited.includes(s)).map((s) => (
+              <div
+                key={s}
+                ref={(el) => {
+                  if (s === 'kisah') kisahRef.current = el;
+                  if (el) containers.current.set(s, el);
+                  else containers.current.delete(s);
+                }}
+                className={`h-full overflow-y-auto overscroll-contain pb-[4.75rem] ${
+                  s === activeSection ? '' : 'hidden'
+                }`}
+              >
+                <Suspense fallback={null}>{renderSection(s)}</Suspense>
+              </div>
+            ))}
           </div>
         </div>
       )}

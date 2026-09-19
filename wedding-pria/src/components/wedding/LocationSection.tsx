@@ -5,6 +5,7 @@ import Countdown from './Countdown';
 
 export const LocationSection: React.FC = () => {
   const [copied, setCopied] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   const addressText = 'Dusun Singkil, RT.02/RW.03, Desa Karanggondang, Kec. Pabelan, Kab. Semarang, Jawa Tengah';
   const mapsUrl = 'https://maps.app.goo.gl/f6CcFwUGBJvimDrz9';
@@ -63,34 +64,59 @@ export const LocationSection: React.FC = () => {
             <p className="font-sans text-[14.5px] font-medium leading-relaxed text-stone-600">
               {addressText}
             </p>
-
-            {/* Tombol aksi — tumpuk penuh */}
-            <div className="mt-5 flex flex-col gap-2.5">
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-gold flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider transition-transform active:scale-[0.98]"
-              >
-                <Navigation className="h-4 w-4 text-emerald-950" />
-                <span>Petunjuk Arah Google Maps</span>
-                <ExternalLink className="h-3.5 w-3.5 text-emerald-950 opacity-70" />
-              </a>
-
-              <button
-                onClick={handleCopyAddress}
-                className="btn-emerald flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider transition-transform active:scale-[0.98]"
-              >
-                {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-gold-300" />}
-                <span>{copied ? 'Alamat Tersalin!' : 'Salin Alamat'}</span>
-              </button>
-            </div>
           </div>
 
           <div className="gold-divider my-6"></div>
 
           {/* Hitung mundur */}
           <Countdown targetIso="2026-10-11T13:00:00+07:00" label="Menuju 11 Oktober 2026" />
+
+          <div className="gold-divider my-6"></div>
+
+          {/* Peta interaktif */}
+          <div>
+            <div className="mb-3">
+              <h4 className="font-playfair text-[18px] font-bold leading-snug text-emerald-950">
+                Peta Lokasi
+              </h4>
+              <p className="font-cormorant text-[13.5px] italic text-stone-500">
+                Geser dan cubit peta untuk menjelajah sekitar lokasi acara
+              </p>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-900/20">
+              {!mapReady && <div className="shimmer-badge absolute inset-0 h-[280px]" aria-hidden />}
+              <iframe
+                title="Peta Lokasi Acara"
+                src="https://maps.google.com/maps?q=Dusun%20Singkil%2C%20Karanggondang%2C%20Pabelan%2C%20Kabupaten%20Semarang&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                onLoad={() => setMapReady(true)}
+                className={`relative h-[280px] w-full transition-opacity duration-500 ${mapReady ? 'opacity-100' : 'opacity-0'}`}
+              />
+            </div>
+          </div>
+
+          {/* Tombol aksi — di bawah peta */}
+          <div className="mt-4 flex flex-col gap-2.5">
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-gold flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider transition-transform active:scale-[0.98]"
+            >
+              <Navigation className="h-4 w-4 text-emerald-950" />
+              <span>Petunjuk Arah Google Maps</span>
+              <ExternalLink className="h-3.5 w-3.5 text-emerald-950 opacity-70" />
+            </a>
+
+            <button
+              onClick={handleCopyAddress}
+              className="btn-emerald flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-cinzel text-[11.5px] font-bold uppercase tracking-wider transition-transform active:scale-[0.98]"
+            >
+              {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-gold-300" />}
+              <span>{copied ? 'Alamat Tersalin!' : 'Salin Alamat'}</span>
+            </button>
+          </div>
 
           <div className="gold-divider my-6"></div>
 

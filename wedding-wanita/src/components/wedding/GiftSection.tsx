@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Check, Copy, Gift, MapPin } from 'lucide-react';
-import { fetchGift, subscribeGift } from '../../lib/gift';
+import { Building2, Check, Copy, Gift } from 'lucide-react';
+import { useGift } from '../../lib/gift';
 
 /* Default lokal — digantikan data dari dashboard (Firestore) bila ada. */
 const DEFAULT_BANK = { number: '0000000000', owner: 'Aprilia Faragita' };
@@ -52,23 +52,13 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 export const GiftSection: React.FC = () => {
-  const [bank, setBank] = useState('BCA');
-  const [number, setNumber] = useState(DEFAULT_BANK.number);
-  const [owner, setOwner] = useState(DEFAULT_BANK.owner);
-  const [address, setAddress] = useState(DEFAULT_ADDRESS);
-
-  // Realtime dari dashboard (tanpa mengubah tampilan awal).
-  useEffect(() => {
-    const apply = (g: { bank: string; number: string; owner: string; address: string } | null) => {
-      if (!g) return;
-      if (g.bank) setBank(g.bank);
-      if (g.number) setNumber(g.number);
-      if (g.owner) setOwner(g.owner);
-      if (g.address) setAddress(g.address);
-    };
-    fetchGift('wanita').then(apply);
-    return subscribeGift('wanita', apply);
-  }, []);
+  // Dari cache (prefetch) bila sudah ada — tanpa load ulang tiap buka menu.
+  const { gift, loading } = useGift('wanita');
+  const ready = !loading;
+  const bank = gift?.bank || 'BCA';
+  const number = gift?.number || DEFAULT_BANK.number;
+  const owner = gift?.owner || DEFAULT_BANK.owner;
+  const address = gift?.address || DEFAULT_ADDRESS;
 
   return (
     <section id="gift" className="relative overflow-hidden px-5 pb-16 pt-12">
@@ -109,17 +99,30 @@ export const GiftSection: React.FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="parchment-card relative overflow-hidden rounded-[20px] border border-gold-400/50 p-5 text-center"
+          className="parchment-card relative overflow-hidden rounded-b-[20px] rounded-t-[110px] border border-gold-400/50 px-5 pb-5 pt-9 text-center"
         >
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-900">
             <Building2 className="h-6 w-6 text-gold-300" />
           </span>
           <h3 className="mt-3 font-playfair text-[20px] font-bold text-emerald-950">Transfer Bank</h3>
-          <BankLogo bank={bank} />
-          <p className="mt-2 font-mono text-[22px] font-bold tracking-wider text-emerald-950">
-            {number}
-          </p>
-          <p className="font-sans text-[13px] text-stone-500">a.n. {owner}</p>
+          {ready ? (
+            <BankLogo bank={bank} />
+          ) : (
+            <div className="shimmer-badge mx-auto mt-2 h-9 w-28 rounded-lg" />
+          )}
+          {ready ? (
+            <>
+              <p className="mt-2 font-mono text-[22px] font-bold tracking-wider text-emerald-950">
+                {number}
+              </p>
+              <p className="font-sans text-[13px] text-stone-500">a.n. {owner}</p>
+            </>
+          ) : (
+            <>
+              <div className="shimmer-badge mx-auto mt-2 h-7 w-48 rounded-lg" />
+              <div className="shimmer-badge mx-auto mt-2 h-4 w-36 rounded-lg" />
+            </>
+          )}
           <div className="mt-4">
             <CopyButton text={number} label="Salin Nomor Rekening" />
           </div>
@@ -131,16 +134,19 @@ export const GiftSection: React.FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="parchment-card relative mt-4 overflow-hidden rounded-[20px] border border-gold-400/50 p-5 text-center"
+          className="parchment-card relative mt-4 overflow-hidden rounded-b-[20px] rounded-t-[110px] border border-gold-400/50 px-5 pb-5 pt-9 text-center"
         >
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-900">
             <Gift className="h-6 w-6 text-gold-300" />
           </span>
           <h3 className="mt-3 font-playfair text-[20px] font-bold text-emerald-950">Kirim Kado Fisik</h3>
-          <p className="mx-auto mt-2 flex max-w-[30ch] items-start justify-center gap-1.5 font-sans text-[13.5px] leading-relaxed text-stone-600">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-900" />
-            <span>{address}</span>
-          </p>
+          {ready ? (
+            <p className="mx-auto mt-2 max-w-[30ch] text-center font-sans text-[13.5px] leading-relaxed text-stone-600">
+              {address}
+            </p>
+          ) : (
+            <div className="shimmer-badge mx-auto mt-2 h-12 w-56 rounded-lg" />
+          )}
           <div className="mt-4">
             <CopyButton text={address} label="Salin Alamat" />
           </div>

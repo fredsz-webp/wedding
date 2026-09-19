@@ -111,6 +111,13 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
     return arr;
   }, [wishes, slug]);
 
+  // Pagination: 5 per halaman agar tidak render semua sekaligus.
+  const PAGE_SIZE = 5;
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(sortedWishes.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageItems = sortedWishes.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   // Saat dibuka dengan link personal, cek apakah link ini sudah dipakai mengirim.
   useEffect(() => {
     if (!slug || !configured) {
@@ -426,8 +433,9 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                 Jadilah yang pertama mengirim ucapan.
               </p>
             ) : (
+              <>
               <div className="mt-4 space-y-3">
-                {sortedWishes.map((w) => {
+                {pageItems.map((w) => {
                   const isOwn = Boolean(slug && w.guestSlug === slug);
                   return (
                   <div
@@ -473,6 +481,43 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                   );
                 })}
               </div>
+              {/* Pagination */}
+              {pageCount > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage(safePage - 1)}
+                    aria-label="Halaman sebelumnya"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-900/10 font-sans text-[13px] font-bold text-emerald-900 transition-all active:scale-95 disabled:opacity-30"
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      aria-label={`Halaman ${p}`}
+                      className={`h-8 min-w-8 rounded-full px-2 font-sans text-[12.5px] font-bold transition-all active:scale-95 ${
+                        p === safePage ? 'bg-emerald-900 text-gold-200 shadow' : 'bg-emerald-900/10 text-emerald-900'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={safePage >= pageCount}
+                    onClick={() => setPage(safePage + 1)}
+                    aria-label="Halaman berikutnya"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-900/10 font-sans text-[13px] font-bold text-emerald-900 transition-all active:scale-95 disabled:opacity-30"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </div>
 

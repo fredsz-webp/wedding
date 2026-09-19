@@ -199,7 +199,27 @@
     opacity: 0.6;
   }
   100% {
-    transform: translateY(105vh) translateX(60px) rotate(360deg);
+    transform: translateY(105vh) translate(60px) rotate(360deg);
     opacity: 0;
   }
+}
+
+/* Anti-slop pass: hormati reduced-motion + fokus keyboard yang jelas */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #d4af37;
+  outline-offset: 2px;
 }

@@ -2,8 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useGuest } from '../../lib/guest';
 
-/** Nama mempelai muncul huruf per huruf (efek panggung setelah pintu terbuka) */
-const StaggerName: React.FC<{ text: string; delay?: number }> = ({ text, delay = 1.15 }) => (
+/** Nama mempelai muncul huruf per huruf — mulai SAAT pintu dibuka (bukan saat halaman dimuat) */
+const StaggerName: React.FC<{ text: string; play: boolean; baseDelay?: number }> = ({
+  text,
+  play,
+  baseDelay = 0.3,
+}) => (
   <span style={{ display: 'inline-block' }} aria-label={text}>
     {text.split('').map((ch, i) => (
       <motion.span
@@ -11,8 +15,8 @@ const StaggerName: React.FC<{ text: string; delay?: number }> = ({ text, delay =
         aria-hidden
         style={{ display: 'inline-block', whiteSpace: 'pre' }}
         initial={{ opacity: 0, y: 16, rotate: 4 }}
-        animate={{ opacity: 1, y: 0, rotate: 0 }}
-        transition={{ delay: delay + i * 0.035, type: 'spring', stiffness: 260, damping: 21 }}
+        animate={play ? { opacity: 1, y: 0, rotate: 0 } : { opacity: 0, y: 16, rotate: 4 }}
+        transition={{ delay: baseDelay + i * 0.035, type: 'spring', stiffness: 260, damping: 21 }}
       >
         {ch}
       </motion.span>
@@ -75,8 +79,9 @@ const Flourish: React.FC<{ flip?: boolean }> = ({ flip = false }) => (
 );
 
 /** Kartu undangan — cocok dengan desain cetak (6.png) */
-export const InvitationCard: React.FC<{ className?: string }> = ({
+export const InvitationCard: React.FC<{ className?: string; play?: boolean }> = ({
   className = '',
+  play = true,
 }) => {
   const { events } = useGuest();
   const isInvited = (eventId: string) =>
@@ -226,7 +231,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 3,
           }}
         >
-          <StaggerName text="Aprilia Faragita" delay={1.15} />
+          <StaggerName text="Aprilia Faragita" play={play} baseDelay={0.3} />
         </p>
         <p
           style={{
@@ -279,7 +284,7 @@ export const InvitationCard: React.FC<{ className?: string }> = ({
             marginBottom: 3,
           }}
         >
-          <StaggerName text="Khoyrul Yusuf Maulana" delay={1.75} />
+          <StaggerName text="Khoyrul Yusuf Maulana" play={play} baseDelay={0.9} />
         </p>
         <p
           style={{

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { getApp, loadDb } from './firebase';
 
 export type GiftSide = 'pria' | 'wanita';
@@ -9,64 +10,80 @@ export interface GiftInfo {
   address: string;
 }
 
-/** Dibaca sekali saat menu Gift dibuka. Gagal = null (pakai default lokal). */
-export async function fetchGift(side: GiftSide): Promise<GiftInfo | null> {
-  const app = getApp();
-  if (!app) return null;
-  try {
-    const db = await loadDb(app);
-    const { doc, getDoc } = await import('firebase/firestore');
-    const snap = await getDoc(doc(db, 'settings', `gift-${side}`));
-    if (!snap.exists()) return null;
-    const d = snap.data();
-    return {
-      bank: String(d.bank ?? ''),
-      number: String(d.number ?? ''),
-      owner: String(d.owner ?? ''),
-      address: String(d.address ?? ''),
-    };
-  } catch {
-    return null;
-  }
+function mapGift(d: Record<string, unknown>): GiftInfo {
+  return {
+    bank: String(d.bank ?? ''),
+    number: String(d.number ?? ''),
+    owner: String(d.owner ?? ''),
+    address: String(d.address ?? ''),
+  };
 }
 
-/** Langganan realtime — perubahan dari dashboard langsung tampil tanpa reload. */
-export function subscribeGift(side: GiftSide, onData: (g: GiftInfo | null) => void): () => void {
+// Cache + langganan bersama: diambil sekali (prefetch saat undangan dibuka),
+// dipakai ulang tiap menu Gift dibuka — tidak load ulang.
+const giftCache = new Map<GiftSide, GiftInfo>();
+const giftStarted = new Set<GiftSide>();
+const giftListeners = new Map<GiftSide, Set<(g: GiftInfo | null) => void>>();
+
+function ensureGiftSub(side: GiftSide): void {
   const app = getApp();
-  if (!app) {
-    onData(null);
-    return () => {};
-  }
-  let unsub: (() => void) | null = null;
-  let cancelled = false;
-  (async () => {
+  if (!app || giftStarted.has(side)) return;
+  giftStarted.add(side);
+  void (async () => {
     try {
       const db = await loadDb(app);
       const { doc, onSnapshot } = await import('firebase/firestore');
-      if (cancelled) return;
-      unsub = onSnapshot(
+      onSnapshot(
         doc(db, 'settings', `gift-${side}`),
         (snap) => {
-          if (!snap.exists()) {
-            onData(null);
-            return;
-          }
-          const d = snap.data();
-          onData({
-            bank: String(d.bank ?? ''),
-            number: String(d.number ?? ''),
-            owner: String(d.owner ?? ''),
-            address: String(d.address ?? ''),
-          });
+          const g = snap.exists() ? mapGift(snap.data()) : null;
+          if (g) giftCache.set(side, g);
+          giftListeners.get(side)?.forEach((fn) => fn(g));
         },
-        () => onData(null),
+        () => {
+          giftStarted.delete(side);
+          giftListeners.get(side)?.forEach((fn) => fn(giftCache.get(side) ?? null));
+        },
       );
     } catch {
-      if (!cancelled) onData(null);
+      giftStarted.delete(side);
+      giftListeners.get(side)?.forEach((fn) => fn(giftCache.get(side) ?? null));
     }
   })();
-  return () => {
-    cancelled = true;
-    unsub?.();
-  };
+}
+
+/** Panggil sekali saat undangan dibuka — data siap sebelum menu Gift dibuka. */
+export function prefetchGift(side: GiftSide): void {
+  ensureGiftSub(side);
+}
+
+/** Data gift realtime (berbagi satu langganan + cache). */
+export function useGift(side: GiftSide): { gift: GiftInfo | null; loading: boolean } {
+  const [gift, setGift] = useState<GiftInfo | null>(() => giftCache.get(side) ?? null);
+  const [loading, setLoading] = useState(() => !giftCache.has(side));
+
+  useEffect(() => {
+    ensureGiftSub(side);
+    let fns = giftListeners.get(side);
+    if (!fns) {
+      fns = new Set();
+      giftListeners.set(side, fns);
+    }
+    const fn = (g: GiftInfo | null) => {
+      if (g) setGift(g);
+      setLoading(false);
+    };
+    fns.add(fn);
+    const cached = giftCache.get(side);
+    if (cached) {
+      setGift(cached);
+      setLoading(false);
+    }
+    if (!getApp()) setLoading(false);
+    return () => {
+      fns!.delete(fn);
+    };
+  }, [side]);
+
+  return { gift, loading };
 }

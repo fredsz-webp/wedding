@@ -29,7 +29,7 @@ export const Countdown: React.FC<{ targetIso: string; label: string }> = ({ targ
 
   return (
     <div className="mt-2 text-center">
-      <p className="font-cinzel text-[10.5px] font-semibold uppercase tracking-[0.28em] text-gold-400">
+      <p className="font-cinzel text-[10.5px] font-bold uppercase tracking-[0.28em] text-gold-600">
         {label}
       </p>
       <div className="mt-3 flex items-stretch justify-center gap-2" role="timer" aria-live="off">

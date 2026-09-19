@@ -26,7 +26,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeSection, onNavigate 
         transition={{ delay: 0.35, duration: 0.4 }}
         className="pointer-events-auto w-[min(94%,20rem)]"
       >
-        <div className="flex items-center justify-evenly rounded-full border border-gold-400/40 bg-emerald-950/95 px-2 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-md">
+        <div className="flex items-center justify-evenly rounded-full border border-gold-400/40 bg-emerald-950 px-2 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.55)]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;

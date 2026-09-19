@@ -1,16 +1,19 @@
 import React, { useMemo } from 'react';
 
 export const FloatingPetals: React.FC = () => {
+  // Hormati HP low-end & reduced-motion: sedikit partikel, mati total bila diminta OS.
+  const disabled = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const particles = useMemo(() => {
-    return Array.from({ length: 18 }).map((_, i) => ({
+    if (disabled) return [];
+    return Array.from({ length: 12 }).map((_, i) => ({
       id: i,
-      left: `${(i * 5.8 + Math.random() * 3) % 100}%`,
-      animationDuration: `${7 + (i % 6) * 2}s`,
-      animationDelay: `${(i * 0.7) % 8}s`,
-      size: `${4 + (i % 4) * 3}px`,
-      opacity: 0.2 + ((i % 5) * 0.12),
+      left: `${(i * 8.3 + Math.random() * 4) % 100}%`,
+      animationDuration: `${8 + (i % 5) * 2}s`,
+      animationDelay: `${(i * 0.9) % 9}s`,
+      size: `${3 + (i % 3) * 2}px`,
+      opacity: 0.15 + ((i % 5) * 0.1),
     }));
-  }, []);
+  }, [disabled]);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-20">

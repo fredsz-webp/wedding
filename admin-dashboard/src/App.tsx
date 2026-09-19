@@ -18,7 +18,9 @@ import {
   Users,
   Download,
   ExternalLink,
+  Hourglass,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import { useAuth, type AccessLevel } from './hooks/useAuth';
 import { useGuests } from './hooks/useGuests';
@@ -181,7 +183,11 @@ function DeniedScreen({
   return (
     <div className="flex min-h-screen items-center justify-center bg-emerald-950 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
-        <div className="mb-2 text-4xl">{pending ? '⏳' : '🔒'}</div>
+        <div className="mb-2 flex justify-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+            {pending ? <Hourglass className="h-7 w-7" /> : <Lock className="h-7 w-7" />}
+          </span>
+        </div>
         <h1 className="text-xl font-extrabold text-emerald-950">
           {pending ? 'Menunggu Persetujuan' : 'Akses Ditolak'}
         </h1>

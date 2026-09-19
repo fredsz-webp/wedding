@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useTransform, useMotionValue, useSpring } from 'framer-motion';
+import KawungDivider from './KawungDivider';
 
 interface StoryStep {
   period: string;
@@ -131,11 +132,7 @@ export const StorySection: React.FC<{ scrollContainer: React.RefObject<HTMLDivEl
             <p className="mx-auto mt-2 max-w-[32ch] font-cormorant text-[17px] italic leading-relaxed text-stone-300">
               Ini cerita singkat perjalanan dua hati menuju ikatan suci pernikahan.
             </p>
-            <div className="mt-5 flex items-center justify-center gap-2.5" aria-hidden>
-              <span className="h-px w-14 bg-gradient-to-r from-transparent to-gold-400/60" />
-              <span className="block h-1.5 w-1.5 rotate-45 bg-gold-400/80" />
-              <span className="h-px w-14 bg-gradient-to-l from-transparent to-gold-400/60" />
-            </div>
+            <KawungDivider className="mt-5" />
           </motion.div>
         </div>
 
@@ -167,7 +164,14 @@ export const StorySection: React.FC<{ scrollContainer: React.RefObject<HTMLDivEl
                     viewport={{ once: true, amount: 0.35 }}
                     transition={{ duration: 0.55 }}
                   >
-                    <div className="parchment-card rounded-[20px] p-5">
+                    <div className="parchment-card relative overflow-hidden rounded-[20px] p-5">
+                      {/* Angka hantu editorial */}
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute -right-2 -top-5 select-none font-playfair text-[92px] font-bold leading-none text-emerald-900/10"
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
                       <div className="mb-2.5 flex items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-400/30 bg-gold-400/20 px-3 py-1 font-cinzel text-[10.5px] font-bold uppercase tracking-widest text-emerald-950">
                           {story.period}
