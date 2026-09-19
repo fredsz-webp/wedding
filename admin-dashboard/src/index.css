@@ -6,6 +6,17 @@
   color-scheme: light;
 }
 
+/* Kunci gutter scrollbar kanan — ganti tab tidak lagi menggeser layout
+   saat scrollbar muncul/hilang karena beda tinggi konten. */
+html {
+  scrollbar-gutter: stable;
+}
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 body {
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   background: #f4f1ea;

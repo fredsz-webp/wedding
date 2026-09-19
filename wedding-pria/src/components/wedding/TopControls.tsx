@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Music } from 'lucide-react';
+import { X, Music, Home } from 'lucide-react';
 
 interface TopControlsProps {
   onCloseInvitation?: () => void;
@@ -45,6 +45,11 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
     }
   };
 
+  // Portal utama (domain utama) — tampil hanya kalau VITE_UTAMA_URL diisi.
+  // Query (?to / ?u) diteruskan supaya nama tamu tidak hilang.
+  const utamaBase = ((import.meta.env.VITE_UTAMA_URL as string | undefined) ?? '').replace(/\/+$/, '');
+  const portalHref = utamaBase ? `${utamaBase}${window.location.search}` : '';
+
   return (
     <>
       <audio ref={audioRef} loop preload="none" />
@@ -55,15 +60,27 @@ export const TopControls: React.FC<TopControlsProps> = ({ onCloseInvitation, aut
         className="pointer-events-none fixed left-1/2 top-4 z-50 flex w-full max-w-[420px] items-start justify-between px-4"
       >
         {onCloseInvitation ? (
-          <button
-            type="button"
-            onClick={onCloseInvitation}
-            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950 text-gold-300 shadow-xl transition-transform hover:scale-105 active:scale-95"
-            title="Tutup Undangan"
-            aria-label="Tutup Undangan"
-          >
-            <X className="h-4 w-4" strokeWidth={2} />
-          </button>
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onCloseInvitation}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950 text-gold-300 shadow-xl transition-transform hover:scale-105 active:scale-95"
+              title="Tutup Undangan"
+              aria-label="Tutup Undangan"
+            >
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+            {portalHref ? (
+              <a
+                href={portalHref}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/40 bg-emerald-950 text-gold-300 shadow-xl transition-transform hover:scale-105 active:scale-95"
+                title="Kembali ke Pilihan Undangan"
+                aria-label="Kembali ke Pilihan Undangan"
+              >
+                <Home className="h-4 w-4" strokeWidth={2} />
+              </a>
+            ) : null}
+          </div>
         ) : (
           <span />
         )}

@@ -3,12 +3,30 @@ import { getApp, loadDb } from './firebase';
 
 const FALLBACK_NAME = 'Tamu Undangan';
 
-/** Ambil nama tamu dari URL. Prioritas: Firestore (?u=slug) -> ?to= -> fallback. */
+/**
+ * Turunkan nama tampilan dari slug (`nama-tamu-xxxx` → "Nama Tamu") agar cover
+ * langsung terisi tanpa menunggu fetch Firestore dan tanpa butuh ?to=.
+ * Sufiks acak terakhir selalu dibuang; kapitalisasi tiap kata.
+ */
+export function nameFromSlug(slug: string): string {
+  const clean = (slug ?? '').trim().toLowerCase();
+  if (!clean) return '';
+  const base = clean.replace(/-[a-z0-9]{1,4}$/, '');
+  if (!base || base === 'tamu') return '';
+  return base
+    .split('-')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/** Ambil nama tamu dari URL. Prioritas: ?to= -> turunkan dari ?u=slug -> fallback. */
 export function getInstantGuestName(): { instant: string; slug: string | null } {
   const params = new URLSearchParams(window.location.search);
   const slug = params.get('u') || params.get('id') || params.get('slug');
   const raw = params.get('to') || params.get('guest') || params.get('nama');
-  const instant = raw ? decodeURIComponent(raw.replace(/\+/g, ' ')).trim() : '';
+  const fromTo = raw ? decodeURIComponent(raw.replace(/\+/g, ' ')).trim() : '';
+  const instant = fromTo || (slug ? nameFromSlug(slug) : '');
   return { instant: instant || FALLBACK_NAME, slug };
 }
 
@@ -18,6 +36,8 @@ export interface GuestInfo {
   name: string;
   /** Event tercentang tamu. Null = tak diketahui (tanpa slug / tanpa Firebase). */
   events: string[] | null;
+  /** True bila slug ada tapi TIDAK terdaftar (link karangan) — semua akses dikunci. */
+  invalid: boolean;
 }
 
 async function markOpenedOnce(docId: string) {
@@ -47,7 +67,7 @@ async function markOpenedOnce(docId: string) {
  */
 export function useGuest(): GuestInfo {
   const [{ instant, slug }] = useState(getInstantGuestName);
-  const [info, setInfo] = useState<GuestInfo>({ slug, name: instant, events: null });
+  const [info, setInfo] = useState<GuestInfo>({ slug, name: instant, events: null, invalid: false });
 
   useEffect(() => {
     if (!slug) return;
@@ -60,7 +80,13 @@ export function useGuest(): GuestInfo {
         const { collection, getDocs, limit, query, where } = await import('firebase/firestore');
         const q = query(collection(db, 'guests'), where('slug', '==', slug), limit(1));
         const snap = await getDocs(q);
-        if (cancelled || snap.empty) return;
+        if (cancelled) return;
+        if (snap.empty) {
+          // Slug ada tapi TIDAK terdaftar (link karangan) → paksa nama fallback,
+          // abaikan ?to= agar nama palsu tidak tampil di cover.
+          setInfo({ slug, name: FALLBACK_NAME, events: [], invalid: true });
+          return;
+        }
         const data = snap.docs[0]!.data();
         const official = String(data.name ?? '').trim();
         const raw = data.events;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   Copy,
@@ -25,10 +25,12 @@ import {
 import { useAuth, type AccessLevel } from './hooks/useAuth';
 import { useGuests } from './hooks/useGuests';
 import { useRsvps } from './hooks/useRsvps';
-import UsersPanel from './components/UsersPanel';
-import RsvpsPanel from './components/RsvpsPanel';
-import GiftSettingsPanel from './components/GiftSettingsPanel';
+// Panel tab di-load malas — bundle awal hanya berisi tab Tamu + login.
+const UsersPanel = lazy(() => import('./components/UsersPanel'));
+const RsvpsPanel = lazy(() => import('./components/RsvpsPanel'));
+const GiftSettingsPanel = lazy(() => import('./components/GiftSettingsPanel'));
 import {
+  applyRsvpToGuest,
   buildShareLink,
   buildWaShareLink,
   createGuest,
@@ -37,7 +39,6 @@ import {
   EVENT_OPTIONS,
   eventShort,
   getShareLinks,
-  guestsToCsv,
   parseBulkNames,
   updateGuest,
   GUEST_GROUPS,
@@ -259,6 +260,32 @@ function Dashboard({
 }) {
   const { guests, loading, error, stats } = useGuests();
   const { entries: rsvps, loading: rsvpsLoading, error: rsvpsError, stats: rsvpStats } = useRsvps();
+
+  // Sinkron otomatis: RSVP terbaru tiap tamu (masuk via link personal) langsung
+  // diterapkan ke kolom RSVP di Daftar Tamu — tanpa perlu tekan tombol apa pun.
+  // Hanya menulis yang beda, jadi tidak ada loop tulis Firestore.
+  const autoSyncBusy = useRef(false);
+  useEffect(() => {
+    if (autoSyncBusy.current || guests.length === 0 || rsvps.length === 0) return;
+    const guestBySlug = new Map(guests.map((g) => [g.slug, g]));
+    // entries terurut terbaru dulu → ambil 1 (terbaru) per slug.
+    const latest = new Map<string, (typeof rsvps)[number]>();
+    rsvps.forEach((e) => {
+      if (e.guestSlug && !latest.has(e.guestSlug)) latest.set(e.guestSlug, e);
+    });
+    const jobs: Promise<unknown>[] = [];
+    for (const [slug, entry] of latest) {
+      const guest = guestBySlug.get(slug);
+      if (!guest) continue;
+      const want = entry.attending ? 'hadir' : 'tidak';
+      if (guest.rsvp !== want) jobs.push(applyRsvpToGuest(guest.id, entry.attending));
+    }
+    if (jobs.length === 0) return;
+    autoSyncBusy.current = true;
+    void Promise.allSettled(jobs).finally(() => {
+      autoSyncBusy.current = false;
+    });
+  }, [rsvps, guests]);
   const [search, setSearch] = useState('');
   const [sideFilter, setSideFilter] = useState<GuestSide | 'semua'>('semua');
   const [groupFilter, setGroupFilter] = useState<GuestGroup | 'semua'>('semua');
@@ -287,7 +314,19 @@ function Dashboard({
     });
   }, [guests, search, sideFilter, groupFilter, rsvpFilter, eventFilter]);
 
-  const copyLink = async (g: Guest, side?: 'pria' | 'wanita') => {
+  // Estimasi orang per tamu dari RSVP terbaru (hanya yang hadir) — tampil di tabel Daftar Tamu.
+  const estimasiBySlug = useMemo(() => {
+    const map = new Map<string, number>();
+    const seen = new Set<string>();
+    rsvps.forEach((e) => {
+      if (!e.guestSlug || seen.has(e.guestSlug)) return;
+      seen.add(e.guestSlug);
+      if (e.attending) map.set(e.guestSlug, e.pax);
+    });
+    return map;
+  }, [rsvps]);
+
+  const copyLink = async (g: Guest, side?: GuestSide) => {
     const key = side ? `${g.id}-${side}` : g.id;
     const url = side ? buildShareLink(g, side) : buildShareLink(g);
     try {
@@ -299,14 +338,81 @@ function Dashboard({
     }
   };
 
-  const exportCsv = () => {
-    const blob = new Blob([guestsToCsv(filtered)], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'daftar-tamu.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportXlsx = async () => {
+    // Library xlsx di-load malas — hanya diunduh saat tombol export diklik.
+    const XLSX = await import('xlsx');
+    const thinBorder = { style: 'thin', color: { rgb: 'FFC9C2B4' } };
+    const border = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+    const header = ['Nama', 'Grup', 'Sisi', 'Acara', 'RSVP', 'Estimasi Orang', 'No. HP', 'Alamat', 'Dibuka', 'Link'];
+    // Pax diambil dari RSVP yang dikirim tamu (bukan estimasi admin):
+    // hadir → jumlah pax, berhalangan → 0, belum isi → kosong.
+    const rsvpBySlug = new Map(rsvps.map((e) => [e.guestSlug, e]));
+    const estimasiOrang = (slug: string): string | number => {
+      const e = rsvpBySlug.get(slug);
+      if (!e) return '';
+      return e.attending ? e.pax : 0;
+    };
+    const body: (string | number)[][] = filtered.map((g) => [
+      g.name,
+      g.group,
+      g.side,
+      g.events.map(eventShort).join(' + '),
+      g.rsvp,
+      estimasiOrang(g.slug),
+      g.phone ?? '',
+      g.address ?? '',
+      g.opened ? 'Sudah buka' : 'Belum',
+      getShareLinks(g).map((l) => l.url).join('\n'),
+    ]);
+    // Baris TOTAL di bawah: jumlahkan Estimasi Orang (yang hadir saja).
+    const totalOrang = filtered.reduce((sum, g) => {
+      const v = estimasiOrang(g.slug);
+      return sum + (typeof v === 'number' ? v : 0);
+    }, 0);
+    const totalRow: (string | number)[] = ['', '', '', '', 'TOTAL', totalOrang, '', '', '', ''];
+    const ws = XLSX.utils.aoa_to_sheet([header, ...body, totalRow]);
+    const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      // Baris terakhir = TOTAL.
+      const isTotal = r === range.e.r;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (!cell) continue;
+        cell.s =
+          r === 0
+            ? {
+                font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+                fill: { fgColor: { rgb: 'FF0E3122' } },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                border,
+              }
+            : {
+                alignment: { vertical: 'center', wrapText: c === 9 },
+                border,
+                ...(isTotal ? { font: { bold: true }, fill: { fgColor: { rgb: 'FFF4EDE2' } } } : {}),
+              };
+      }
+    }
+    // Kolom No. HP diformat teks agar nol depan (08…) tidak dimakan Excel.
+    for (let r = 1; r <= range.e.r; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 6 })];
+      if (cell) cell.z = '@';
+    }
+    ws['!cols'] = [
+      { wch: 24 },
+      { wch: 12 },
+      { wch: 9 },
+      { wch: 24 },
+      { wch: 9 },
+      { wch: 15 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 11 },
+      { wch: 50 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Daftar Tamu');
+    XLSX.writeFile(wb, 'daftar-tamu.xlsx');
   };
 
   return (
@@ -351,7 +457,7 @@ function Dashboard({
           <Stat icon={<UserCheck className="h-5 w-5" />} label="RSVP Hadir" value={rsvpStats.hadir} tone="bg-green-700" />
           <Stat icon={<UserX className="h-5 w-5" />} label="Berhalangan" value={rsvpStats.tidak} tone="bg-red-700" />
           <Stat icon={<MessageCircle className="h-5 w-5" />} label="Ucapan" value={rsvpStats.ucapan} tone="bg-amber-600" />
-          <Stat icon={<Check className="h-5 w-5" />} label="Estimasi Pax" value={rsvpStats.paxHadir} tone="bg-emerald-700" />
+          <Stat icon={<Check className="h-5 w-5" />} label="Estimasi Orang" value={rsvpStats.paxHadir} tone="bg-emerald-700" />
         </div>
 
         {/* Tabs */}
@@ -386,6 +492,7 @@ function Dashboard({
           )}
         </div>
 
+        <Suspense fallback={<p className="mt-6 text-center text-sm text-stone-400">Memuat…</p>}>
         {tab === 'pengguna' && canManageUsers ? (
           <UsersPanel currentEmail={userEmail ?? ''} />
         ) : tab === 'gift' && canManageUsers ? (
@@ -453,11 +560,11 @@ function Dashboard({
               <Upload className="h-4 w-4" /> Tambah Banyak
             </button>
             <button
-              onClick={exportCsv}
+              onClick={() => void exportXlsx()}
               disabled={filtered.length === 0}
               className="flex items-center gap-1.5 rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-50 disabled:opacity-40"
             >
-              <Download className="h-4 w-4" /> Export CSV ({filtered.length})
+              <Download className="h-4 w-4" /> Export Excel ({filtered.length})
             </button>
           </div>
         </div>
@@ -509,7 +616,9 @@ function Dashboard({
                         <p className="font-bold capitalize">{g.name}</p>
                         <p className="text-xs text-stone-500">
                           {[g.phone, g.address].filter(Boolean).join(' · ') || '—'}
-                          {g.pax > 1 && ` · ${g.pax} orang`}
+                          {estimasiBySlug.has(g.slug) && (
+                            <span className="font-bold text-emerald-700">{` · ${estimasiBySlug.get(g.slug)} orang`}</span>
+                          )}
                         </p>
                       </td>
                       <td className="px-4 py-3">
@@ -620,12 +729,13 @@ function Dashboard({
         </div>
 
         <p className="mt-3 text-xs text-stone-400">
-          Share link format: <code className="font-mono">?to=Nama+Tamu&amp;u=slug</code> — <code className="font-mono">to</code>{' '}
-          langsung tampil di cover (“Kepada Yth…”), <code className="font-mono">u</code> menandai status “Sudah Buka” otomatis.
-          Tamu sisi <b>Umum</b> dapat 2 link (Pria + Wanita).
+          Share link format: <code className="font-mono">?u=slug</code> — nama langsung tampil di cover,{' '}
+          <code className="font-mono">u</code> menandai status “Sudah Buka” otomatis.
+          Tamu sisi <b>Umum</b> dapat 1 link portal utama (tamu memilih Pria / Wanita sendiri).
         </p>
           </>
         )}
+        </Suspense>
       </main>
 
       {showForm && (
@@ -750,16 +860,12 @@ function GuestFormModal({ initial, onClose }: { initial: Guest | null; onClose: 
           >
             <option value="pria">Pria</option>
             <option value="wanita">Wanita</option>
-            <option value="umum">Umum (dapat 2 link)</option>
+            <option value="umum">Umum (link portal utama)</option>
           </select>
         </div>
         <div>
           <label className="block text-sm font-bold">No. HP (opsional)</label>
           <input value={form.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} placeholder="08…" className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-700" />
-        </div>
-        <div>
-          <label className="block text-sm font-bold">Jumlah (pax)</label>
-          <input type="number" min={1} max={10} value={form.pax} onChange={(e) => set({ pax: Number(e.target.value) })} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-700" />
         </div>
       </div>
 

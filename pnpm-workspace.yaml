@@ -1,6 +1,7 @@
 packages:
   - 'wedding-pria'
   - 'wedding-wanita'
+  - 'wedding-utama'
   - 'admin-dashboard'
 
 allowBuilds:

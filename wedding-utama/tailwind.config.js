@@ -1,0 +1,57 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+        cinzel: ['"Cinzel"', 'serif'],
+        cormorant: ['"Cormorant Garamond"', 'serif'],
+        playfair: ['"Playfair Display"', 'serif'],
+        script: ['"Great Vibes"', 'cursive'],
+        alex: ['"Alex Brush"', 'cursive'],
+      },
+      colors: {
+        emerald: {
+          950: '#04130d',
+          900: '#092318',
+          850: '#0e3122',
+          800: '#143f2d',
+          700: '#1c553e',
+          600: '#267354',
+          500: '#34936d',
+          400: '#4db58a',
+          300: '#7ad0ac',
+          200: '#b0e7cf',
+          100: '#d9f5e9',
+          50: '#f0faf5',
+        },
+        gold: {
+          900: '#5a4309',
+          800: '#7d5e0d',
+          700: '#a37a13',
+          600: '#c5941c',
+          500: '#d4af37',
+          400: '#dfc259',
+          300: '#ebd481',
+          200: '#f4e6b1',
+          100: '#fbf4dd',
+          50: '#fdfbf4',
+        },
+        cream: {
+          900: '#d4c7b2',
+          800: '#ded3c1',
+          700: '#e7ded0',
+          600: '#efe8dc',
+          500: '#f4ede2',
+          400: '#f8f3eb',
+          300: '#fbf8f2',
+          200: '#fdfbf8',
+          100: '#ffffff',
+        },
+      },
+    },
+  },
+  plugins: [],
+};

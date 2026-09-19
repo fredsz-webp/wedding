@@ -83,10 +83,11 @@ export const InvitationCard: React.FC<{ className?: string; play?: boolean }> = 
   className = '',
   play = true,
 }) => {
-  const { events } = useGuest();
-  const isInvited = (eventId: string) =>
-    events === null ? false : events.length === 0 || events.includes(eventId);
+  const { events, invalid } = useGuest();
 
+  const isInvited = (eventId: string) =>
+    // Link karangan (invalid) tidak dapat centang apa pun.
+    invalid ? false : events === null ? false : events.length === 0 || events.includes(eventId);
   return (
     <div
       className={`relative flex h-full min-h-0 flex-col overflow-hidden ${className}`}

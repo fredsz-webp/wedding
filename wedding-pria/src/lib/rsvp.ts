@@ -42,11 +42,32 @@ function validate(input: RsvpInput): string | null {
   return validateEditable(input);
 }
 
+/**
+ * Pastikan slug di link (?u=…) benar-benar terdaftar di Daftar Tamu.
+ * Menolak link karangan (format benar tapi slug tidak ada di database).
+ * Catatan: ini validasi sisi klien. Koleksi `guests` memang boleh dibaca publik
+ * agar cover bisa tampil tanpa login — pengetatan level rules butuh migrasi
+ * (jadikan slug sebagai ID dokumen) dan sengaja tidak dilakukan di sini.
+ */
+export async function assertGuestSlugRegistered(slug: string): Promise<void> {
+  const clean = (slug ?? '').trim();
+  if (!clean) throw new Error('Tautan undangan tidak valid. Gunakan link personal dari admin/panitia.');
+  const app = getApp();
+  if (!app) throw new Error('RSVP online belum dikonfigurasi. Hubungi mempelai untuk konfirmasi manual.');
+  const db = await loadDb(app);
+  const { collection, getDocs, limit, query, where } = await import('firebase/firestore');
+  const q = query(collection(db, 'guests'), where('slug', '==', clean), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error('Tautan undangan tidak terdaftar. Gunakan link personal dari admin/panitia.');
+}
+
 export async function submitRsvp(input: RsvpInput): Promise<void> {
   const app = getApp();
   if (!app) throw new Error('RSVP online belum dikonfigurasi. Hubungi mempelai untuk konfirmasi manual.');
   const err = validate(input);
   if (err) throw new Error(err);
+  // Link harus benar-benar terdaftar di Daftar Tamu — link karangan ditolak.
+  await assertGuestSlugRegistered(input.guestSlug);
   const db = await loadDb(app);
   const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
   await addDoc(collection(db, 'rsvps'), {
@@ -64,12 +85,15 @@ export async function submitRsvp(input: RsvpInput): Promise<void> {
 export async function updateRsvp(
   id: string,
   input: { guestName: string; attending: boolean; pax: number; message: string },
+  guestSlug?: string,
 ): Promise<void> {
   const app = getApp();
   if (!app) throw new Error('RSVP online belum dikonfigurasi. Hubungi mempelai untuk konfirmasi manual.');
   if (!id) throw new Error('Data konfirmasi tidak ditemukan.');
   const err = validateEditable(input);
   if (err) throw new Error(err);
+  // Link harus benar-benar terdaftar di Daftar Tamu — link karangan ditolak.
+  if (guestSlug !== undefined) await assertGuestSlugRegistered(guestSlug);
   const db = await loadDb(app);
   const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
   await updateDoc(doc(db, 'rsvps', id), {

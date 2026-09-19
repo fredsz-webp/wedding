@@ -196,38 +196,40 @@ export async function applyRsvpToGuest(guestId: string, attending: boolean): Pro
 function inviteBaseUrl(side: GuestSide): string {
   const pria = ((import.meta.env.VITE_INVITE_PRIA_URL as string | undefined) ?? '').replace(/\/+$/, '');
   const wanita = ((import.meta.env.VITE_INVITE_WANITA_URL as string | undefined) ?? '').replace(/\/+$/, '');
+  const utama = ((import.meta.env.VITE_INVITE_UTAMA_URL as string | undefined) ?? '').replace(/\/+$/, '');
   if (side === 'pria') return pria;
   if (side === 'wanita') return wanita;
-  return pria || wanita;
+  // Tamu "umum" diarahkan ke portal utama (domain utama) — di sana tamu
+  // memilih sendiri undangan Pria / Wanita. Query ?to & ?u diteruskan otomatis.
+  return utama || pria || wanita;
 }
 
 /**
- * Link undangan personal. Format:
- *   {base}?to={Nama Tamu}&u={slug}
- * - `to` langsung dipakai cover untuk menampilkan NAMA (tanpa fetch).
+ * Link undangan personal (pendek). Format:
+ *   {base}?u={slug}
+ * - Nama langsung tampil di cover (diturunkan dari slug, tanpa kedip),
+ *   lalu diganti nama resmi Firestore setelah fetch.
  * - `u` dipakai undangan untuk verifikasi ke Firestore + menandai "sudah dibuka".
- * - `sideOverride` dipakai untuk tamu "umum" agar bisa dibuatkan link Pria & Wanita.
+ * - `sideOverride` dipakai untuk tamu "umum" agar dibuatkan 1 link portal utama.
+ * Link lama berformat ?to=…&u=… tetap didukung (backward compatible).
  */
 export function buildShareLink(guest: Pick<Guest, 'name' | 'slug' | 'side'>, sideOverride?: GuestSide): string {
-  const side = sideOverride ?? (guest.side === 'umum' ? 'pria' : guest.side);
+  const side = sideOverride ?? guest.side;
   const base = inviteBaseUrl(side);
-  const params = new URLSearchParams({ to: guest.name, u: guest.slug });
+  const params = new URLSearchParams({ u: guest.slug });
   return base ? `${base}?${params.toString()}` : `?${params.toString()}`;
 }
 
 export interface ShareLink {
-  side: 'pria' | 'wanita';
+  side: GuestSide;
   label: string;
   url: string;
 }
 
-/** Semua link untuk seorang tamu. Sisi "umum" dapat 2 link (Pria + Wanita). */
+/** Semua link untuk seorang tamu. Sisi "umum" dapat 1 link portal utama. */
 export function getShareLinks(guest: Pick<Guest, 'name' | 'slug' | 'side'>): ShareLink[] {
   if (guest.side === 'umum') {
-    return [
-      { side: 'pria', label: 'Pria', url: buildShareLink(guest, 'pria') },
-      { side: 'wanita', label: 'Wanita', url: buildShareLink(guest, 'wanita') },
-    ];
+    return [{ side: 'umum', label: 'Utama', url: buildShareLink(guest, 'umum') }];
   }
   return [{ side: guest.side, label: guest.side === 'pria' ? 'Pria' : 'Wanita', url: buildShareLink(guest) }];
 }
@@ -256,14 +258,4 @@ export function parseBulkNames(text: string, group: GuestGroup, side: GuestSide)
     .map((line) => line.trim().replace(/^[-*\d.)\s]+/, ''))
     .filter(Boolean)
     .map((name) => ({ name, group, side, rsvp: 'pending' as const, pax: 1 }));
-}
-
-export function guestsToCsv(guests: Guest[]): string {
-  const header = 'nama,slug,grup,sisi,acara,rsvp,pax,no_hp,alamat,dibuka,link';
-  const rows = guests.map((g) =>
-    [g.name, g.slug, g.group, g.side, g.events.map(eventShort).join(' + '), g.rsvp, String(g.pax), g.phone ?? '', g.address ?? '', g.opened ? 'ya' : 'belum', getShareLinks(g).map((l) => l.url).join(' ')]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      .join(','),
-  );
-  return [header, ...rows].join('\n');
 }

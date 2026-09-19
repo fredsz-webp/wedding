@@ -83,9 +83,10 @@ export const InvitationCard: React.FC<{ className?: string; play?: boolean }> = 
   className = '',
   play = true,
 }) => {
-  const { events } = useGuest();
+  const { events, invalid } = useGuest();
   // Tamu lama tanpa field events dianggap diundang (default).
-  const invited11 = events === null ? false : events.length === 0 || events.includes('pria-11-okt');
+  // Link karangan (invalid) tidak dapat centang apa pun.
+  const invited11 = invalid ? false : events === null ? false : events.length === 0 || events.includes('pria-11-okt');
 
   return (
     <div

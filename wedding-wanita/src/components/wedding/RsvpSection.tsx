@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Heart, Loader2, Minus, Plus, Send, X } from 'lucide-react';
 import { getInstantGuestName } from '../../lib/guest';
 import {
+  assertGuestSlugRegistered,
   findRsvpBySlug,
   isLiked,
   isRsvpConfigured,
@@ -22,7 +23,8 @@ interface RsvpSectionProps {
 function formatDate(iso: string | null): string {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const d = new Date(iso);
+    return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
   } catch {
     return '';
   }
@@ -91,6 +93,8 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
   /** Satu link personal hanya untuk satu kiriman — isi dari kiriman sebelumnya (kalau ada). */
   const [existing, setExisting] = useState<Wish | null>(null);
   const [checking, setChecking] = useState(Boolean(slug));
+  /** Slug ada tapi tidak terdaftar di Daftar Tamu (link karangan) → form dikunci dari awal. */
+  const [slugInvalid, setSlugInvalid] = useState(false);
   /** Honeypot anti-bot: input tak terlihat, hanya bot yang mengisinya. */
   const [website, setWebsite] = useState('');
   const mountTime = useRef(Date.now());
@@ -126,6 +130,15 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
     }
     let cancelled = false;
     setChecking(true);
+    setSlugInvalid(false);
+    // Kunci dari awal: slug harus terdaftar di Daftar Tamu, link karangan langsung ditolak.
+    void assertGuestSlugRegistered(slug)
+      .then(() => {
+        if (!cancelled) setSlugInvalid(false);
+      })
+      .catch(() => {
+        if (!cancelled) setSlugInvalid(true);
+      });
     findRsvpBySlug(slug).then((found) => {
       if (cancelled) return;
       if (found) {
@@ -163,7 +176,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
         throw new Error('Terlalu cepat — tunggu sebentar lalu coba lagi.');
       }
       if (existing?.id) {
-        await updateRsvp(existing.id, { guestName: name, attending, pax, message });
+        await updateRsvp(existing.id, { guestName: name, attending, pax, message }, slug);
       } else {
         await submitRsvp({ guestName: name, attending, pax, message, guestSlug: slug, side });
       }
@@ -263,6 +276,19 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
               </h3>
               <p className="mx-auto mt-1.5 max-w-[36ch] font-sans text-[13.5px] leading-relaxed text-stone-500">
                 Konfirmasi kehadiran memerlukan link undangan personal Anda.
+                Silakan hubungi mempelai untuk memintanya.
+              </p>
+            </div>
+          ) : slugInvalid ? (
+            <div className="py-6 text-center">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-950">
+                <X className="h-6 w-6 text-red-300" strokeWidth={2.5} />
+              </span>
+              <h3 className="mt-4 font-playfair text-[20px] font-bold text-emerald-950">
+                Tautan Tidak Terdaftar
+              </h3>
+              <p className="mx-auto mt-1.5 max-w-[36ch] font-sans text-[13.5px] leading-relaxed text-stone-500">
+                Tautan ini tidak terdaftar di daftar tamu. Gunakan link undangan personal Anda.
                 Silakan hubungi mempelai untuk memintanya.
               </p>
             </div>
@@ -456,13 +482,12 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
                         </p>
                         <p className="font-sans text-[11px] text-stone-400">
                           {formatDate(w.createdAt)}
-                          {w.attending && w.pax > 1 ? ` · ${w.pax} orang` : ''}
                         </p>
                       </div>
                       <span className={`rounded-full px-2 py-1 font-sans text-[10.5px] font-bold ${w.attending ? 'bg-green-100 text-green-800' : 'bg-stone-100 text-stone-500'}`}>
                         {w.attending ? 'Hadir' : 'Berhalangan'}
                       </span>
-                      {slug ? (
+                      {slug && !slugInvalid ? (
                         <LikeButton wish={w} />
                       ) : (
                         <span className="flex shrink-0 items-center gap-1 rounded-full bg-stone-100 px-2 py-1 font-sans text-[11px] font-bold text-stone-500">

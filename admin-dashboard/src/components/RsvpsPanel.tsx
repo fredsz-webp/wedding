@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Heart, Link2, Loader2, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { Heart, Link2, Loader2, Search, Trash2 } from 'lucide-react';
 import { deleteRsvp, linkRsvpToGuest, type RsvpEntry } from '../lib/rsvps';
-import { applyRsvpToGuest, type Guest } from '../lib/guests';
+import { type Guest } from '../lib/guests';
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
@@ -28,8 +28,6 @@ export default function RsvpsPanel({
 }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'semua' | 'hadir' | 'tidak'>('semua');
-  const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [linkingId, setLinkingId] = useState<string | null>(null);
 
   const guestBySlug = useMemo(() => {
@@ -50,41 +48,6 @@ export default function RsvpsPanel({
     });
   }, [entries, search, filter]);
 
-  /** Terapkan RSVP terbaru per tamu (cocok via slug) ke kolom RSVP di Daftar Tamu. */
-  const syncToGuests = async () => {
-    setSyncing(true);
-    setSyncMsg(null);
-    try {
-      const latest = new Map<string, RsvpEntry>();
-      entries.forEach((e) => {
-        if (e.guestSlug && !latest.has(e.guestSlug)) latest.set(e.guestSlug, e);
-      });
-      let synced = 0;
-      let skipped = 0;
-      for (const [slug, entry] of latest) {
-        const guest = guestBySlug.get(slug);
-        if (!guest) {
-          skipped++;
-          continue;
-        }
-        const want = entry.attending ? 'hadir' : 'tidak';
-        if (guest.rsvp !== want) {
-          await applyRsvpToGuest(guest.id, entry.attending);
-          synced++;
-        }
-      }
-      setSyncMsg(
-        synced > 0
-          ? `Berhasil menerapkan ${synced} RSVP ke Daftar Tamu.${skipped > 0 ? ` ${skipped} tanpa link tamu dilewati.` : ''}`
-          : 'Semua sudah sinkron, tidak ada yang perlu diubah.',
-      );
-    } catch (e) {
-      setSyncMsg(e instanceof Error ? `Gagal: ${e.message}` : 'Gagal sinkron.');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   return (
     <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2">
@@ -95,22 +58,9 @@ export default function RsvpsPanel({
         </span>
       </div>
       <p className="mt-1 text-xs text-stone-500">
-        Otomatis terisi saat tamu menekan “Kirim Konfirmasi” di undangan. Nama yang cocok dengan daftar tamu (via
-        link personal) ditandai. Badge RSVP di tabel Daftar Tamu adalah catatan admin — tekan Sinkronkan untuk
-        menerapkan data asli ke sana.
+        Otomatis terisi saat tamu menekan “Kirim Konfirmasi” di undangan. Status hadir/berhalangan langsung
+        tersinkron ke kolom RSVP di Daftar Tamu (via link personal) — tanpa perlu tekan tombol apa pun.
       </p>
-
-      {canDelete && entries.length > 0 && (
-        <button
-          onClick={() => void syncToGuests()}
-          disabled={syncing}
-          className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
-        >
-          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          {syncing ? 'Menyinkronkan…' : 'Sinkronkan ke Daftar Tamu'}
-        </button>
-      )}
-      {syncMsg && <p className="mt-2 rounded-xl bg-emerald-50 p-2.5 text-xs font-bold text-emerald-800">{syncMsg}</p>}
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <label className="flex flex-1 items-center gap-2 rounded-xl border border-stone-200 px-3 py-2.5 focus-within:border-emerald-700">
