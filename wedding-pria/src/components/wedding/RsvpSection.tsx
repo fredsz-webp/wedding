@@ -329,13 +329,10 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ side }) => {
               <label className="block font-sans text-[12.5px] font-bold uppercase tracking-wide text-emerald-950">
                 Nama
               </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nama Anda"
-                maxLength={60}
-                className="mt-1.5 w-full rounded-xl border border-emerald-900/20 bg-white px-4 py-3 font-sans text-[14.5px] text-stone-800 outline-none placeholder:text-stone-400 focus:border-gold-500"
-              />
+              {/* Nama dikunci dari link undangan — tidak bisa diubah. */}
+              <p className="mt-1.5 w-full rounded-xl border border-emerald-900/20 bg-stone-100 px-4 py-3 font-sans text-[14.5px] font-semibold capitalize text-stone-800">
+                {name || 'Tamu Undangan'}
+              </p>
 
               {/* Honeypot anti-bot — tak terlihat manusia */}
               <input
