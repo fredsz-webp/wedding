@@ -816,6 +816,10 @@ function GuestFormModal({ initial, onClose }: { initial: Guest | null; onClose: 
       setError('Nama tamu wajib diisi.');
       return;
     }
+    if (!(form.events ?? []).length) {
+      setError('Pilih minimal 1 hari acara.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -912,7 +916,11 @@ function GuestFormModal({ initial, onClose }: { initial: Guest | null; onClose: 
         <button onClick={onClose} className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-50">
           Batal
         </button>
-        <button onClick={() => void save()} disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60">
+        <button
+          onClick={() => void save()}
+          disabled={saving || !(form.events ?? []).length}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
+        >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} {initial ? 'Simpan' : 'Tambah'}
         </button>
       </div>
@@ -1051,7 +1059,11 @@ function BulkModal({ onClose }: { onClose: () => void }) {
       {error && <p className="mt-2 rounded-xl bg-red-50 p-2.5 text-xs text-red-700">{error}</p>}
       <div className="mt-4 flex gap-2">
         <button onClick={onClose} className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-50">Tutup</button>
-        <button onClick={() => void save()} disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60">
+        <button
+          onClick={() => void save()}
+          disabled={saving || events.length === 0 || preview.length === 0}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
+        >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} Simpan {preview.length} Tamu
         </button>
       </div>

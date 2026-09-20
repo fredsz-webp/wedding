@@ -53,11 +53,15 @@ export function sideFromEvents(events: GuestEvent[]): GuestSide {
   return 'umum';
 }
 
-function sanitizeEvents(raw: unknown, side: GuestSide): GuestEvent[] {
+function sanitizeEvents(raw: unknown, side: GuestSide, opts?: { requireAtLeastOne?: boolean }): GuestEvent[] {
   const valid = EVENT_OPTIONS.map((e) => e.value);
   if (!Array.isArray(raw)) return defaultEventsForSide(side);
-  const clean = raw.filter((v): v is GuestEvent => valid.includes(v as GuestEvent));
-  return clean.length > 0 ? [...new Set(clean)] : defaultEventsForSide(side);
+  const clean = [...new Set(raw.filter((v): v is GuestEvent => valid.includes(v as GuestEvent)))];
+  if (clean.length === 0) {
+    if (opts?.requireAtLeastOne) throw new Error('Pilih minimal 1 hari acara.');
+    return defaultEventsForSide(side);
+  }
+  return clean;
 }
 
 export interface Guest {
@@ -153,7 +157,7 @@ export async function createGuest(input: GuestInput): Promise<string> {
     rsvp: input.rsvp ?? 'pending',
     pax: Math.max(1, Math.min(10, Number(input.pax ?? 1))),
     note: input.note?.trim() || null,
-    events: sanitizeEvents(input.events, input.side),
+    events: sanitizeEvents(input.events, input.side, { requireAtLeastOne: true }),
     opened: false,
     openedAt: null,
     viewCount: 0,
@@ -179,7 +183,7 @@ export async function updateGuest(id: string, patch: Partial<GuestInput & { rsvp
   if (patch.pax !== undefined) clean.pax = Math.max(1, Math.min(10, Number(patch.pax)));
   if (patch.note !== undefined) clean.note = patch.note.trim() || null;
   if (patch.events !== undefined) {
-    clean.events = sanitizeEvents(patch.events, (patch.side as GuestSide) ?? 'umum');
+    clean.events = sanitizeEvents(patch.events, (patch.side as GuestSide) ?? 'umum', { requireAtLeastOne: true });
   }
   await updateDoc(doc(db, GUESTS_COLLECTION, id), clean);
 }
@@ -272,8 +276,8 @@ export function parseBulkNames(
   side: GuestSide,
   events?: GuestEvent[],
 ): GuestInput[] {
-  const resolvedEvents = events && events.length > 0 ? events : defaultEventsForSide(side);
-  const resolvedSide = sideFromEvents(resolvedEvents);
+  const resolvedEvents = events !== undefined ? events : defaultEventsForSide(side);
+  const resolvedSide = resolvedEvents.length > 0 ? sideFromEvents(resolvedEvents) : side;
   return text
     .split('\n')
     .map((line) => line.trim().replace(/^[-*\d.)\s]+/, ''))
