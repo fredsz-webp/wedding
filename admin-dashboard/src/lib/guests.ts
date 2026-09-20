@@ -43,6 +43,16 @@ export function defaultEventsForSide(side: GuestSide): GuestEvent[] {
   return ['pria-11-okt', 'wanita-3-okt', 'wanita-4-okt'];
 }
 
+/** Deteksi sisi undangan dari centangan acara (kebalikan defaultEventsForSide). */
+export function sideFromEvents(events: GuestEvent[]): GuestSide {
+  const hasPria = events.some((e) => e.startsWith('pria-'));
+  const hasWanita = events.some((e) => e.startsWith('wanita-'));
+  if (hasPria && hasWanita) return 'umum';
+  if (hasPria) return 'pria';
+  if (hasWanita) return 'wanita';
+  return 'umum';
+}
+
 function sanitizeEvents(raw: unknown, side: GuestSide): GuestEvent[] {
   const valid = EVENT_OPTIONS.map((e) => e.value);
   if (!Array.isArray(raw)) return defaultEventsForSide(side);
@@ -193,15 +203,10 @@ export async function applyRsvpToGuest(guestId: string, attending: boolean): Pro
 // Share link
 // ---------------------------------------------------------------------------
 
-function inviteBaseUrl(side: GuestSide): string {
+function inviteBaseUrl(side: 'pria' | 'wanita'): string {
   const pria = ((import.meta.env.VITE_INVITE_PRIA_URL as string | undefined) ?? '').replace(/\/+$/, '');
   const wanita = ((import.meta.env.VITE_INVITE_WANITA_URL as string | undefined) ?? '').replace(/\/+$/, '');
-  const utama = ((import.meta.env.VITE_INVITE_UTAMA_URL as string | undefined) ?? '').replace(/\/+$/, '');
-  if (side === 'pria') return pria;
-  if (side === 'wanita') return wanita;
-  // Tamu "umum" diarahkan ke portal utama (domain utama) — di sana tamu
-  // memilih sendiri undangan Pria / Wanita. Query ?to & ?u diteruskan otomatis.
-  return utama || pria || wanita;
+  return side === 'pria' ? pria : wanita;
 }
 
 /**
@@ -210,12 +215,14 @@ function inviteBaseUrl(side: GuestSide): string {
  * - Nama langsung tampil di cover (diturunkan dari slug, tanpa kedip),
  *   lalu diganti nama resmi Firestore setelah fetch.
  * - `u` dipakai undangan untuk verifikasi ke Firestore + menandai "sudah dibuka".
- * - `sideOverride` dipakai untuk tamu "umum" agar dibuatkan 1 link portal utama.
+ * - `sideOverride` dipakai untuk tamu "umum" agar dibuatkan link ke subdomain pria/wanita.
  * Link lama berformat ?to=…&u=… tetap didukung (backward compatible).
  */
 export function buildShareLink(guest: Pick<Guest, 'name' | 'slug' | 'side'>, sideOverride?: GuestSide): string {
   const side = sideOverride ?? guest.side;
-  const base = inviteBaseUrl(side);
+  // Umum tidak punya subdomain sendiri — fallback pria (pakai getShareLinks untuk 2 link).
+  const target: 'pria' | 'wanita' = side === 'wanita' ? 'wanita' : 'pria';
+  const base = inviteBaseUrl(target);
   const params = new URLSearchParams({ u: guest.slug });
   return base ? `${base}?${params.toString()}` : `?${params.toString()}`;
 }
@@ -226,10 +233,17 @@ export interface ShareLink {
   url: string;
 }
 
-/** Semua link untuk seorang tamu. Sisi "umum" dapat 1 link portal utama. */
+/**
+ * Semua link untuk seorang tamu — selalu ke subdomain, tanpa portal pilih sisi.
+ * - pria / wanita → 1 link subdomain
+ * - umum → 2 link (pria + wanita subdomain)
+ */
 export function getShareLinks(guest: Pick<Guest, 'name' | 'slug' | 'side'>): ShareLink[] {
   if (guest.side === 'umum') {
-    return [{ side: 'umum', label: 'Utama', url: buildShareLink(guest, 'umum') }];
+    return [
+      { side: 'pria', label: 'Pria', url: buildShareLink(guest, 'pria') },
+      { side: 'wanita', label: 'Wanita', url: buildShareLink(guest, 'wanita') },
+    ];
   }
   return [{ side: guest.side, label: guest.side === 'pria' ? 'Pria' : 'Wanita', url: buildShareLink(guest) }];
 }
@@ -252,10 +266,24 @@ export function buildWaShareLink(guest: Pick<Guest, 'name' | 'slug' | 'side' | '
 }
 
 /** Parse textarea "satu nama per baris" menjadi input tamu. */
-export function parseBulkNames(text: string, group: GuestGroup, side: GuestSide): GuestInput[] {
+export function parseBulkNames(
+  text: string,
+  group: GuestGroup,
+  side: GuestSide,
+  events?: GuestEvent[],
+): GuestInput[] {
+  const resolvedEvents = events && events.length > 0 ? events : defaultEventsForSide(side);
+  const resolvedSide = sideFromEvents(resolvedEvents);
   return text
     .split('\n')
     .map((line) => line.trim().replace(/^[-*\d.)\s]+/, ''))
     .filter(Boolean)
-    .map((name) => ({ name, group, side, rsvp: 'pending' as const, pax: 1 }));
+    .map((name) => ({
+      name,
+      group,
+      side: resolvedSide,
+      events: resolvedEvents,
+      rsvp: 'pending' as const,
+      pax: 1,
+    }));
 }

@@ -36,6 +36,7 @@ import {
   createGuest,
   defaultEventsForSide,
   deleteGuest,
+  sideFromEvents,
   EVENT_OPTIONS,
   eventShort,
   getShareLinks,
@@ -731,7 +732,7 @@ function Dashboard({
         <p className="mt-3 text-xs text-stone-400">
           Share link format: <code className="font-mono">?u=slug</code> — nama langsung tampil di cover,{' '}
           <code className="font-mono">u</code> menandai status “Sudah Buka” otomatis.
-          Tamu sisi <b>Umum</b> dapat 1 link portal utama (tamu memilih Pria / Wanita sendiri).
+          Tamu sisi <b>Pria</b>/<b>Wanita</b> dapat 1 link subdomain; <b>Umum</b> dapat 2 link subdomain (langsung, tanpa pilih sisi).
         </p>
           </>
         )}
@@ -860,7 +861,7 @@ function GuestFormModal({ initial, onClose }: { initial: Guest | null; onClose: 
           >
             <option value="pria">Pria</option>
             <option value="wanita">Wanita</option>
-            <option value="umum">Umum (link portal utama)</option>
+            <option value="umum">Umum (2 link: pria + wanita)</option>
           </select>
         </div>
         <div>
@@ -883,7 +884,8 @@ function GuestFormModal({ initial, onClose }: { initial: Guest | null; onClose: 
                 onClick={(e) => {
                   e.preventDefault();
                   const cur = form.events ?? [];
-                  set({ events: checked ? cur.filter((v) => v !== ev.value) : [...cur, ev.value] });
+                  const next = checked ? cur.filter((v) => v !== ev.value) : [...cur, ev.value];
+                  set({ events: next, side: sideFromEvents(next) });
                 }}
                 className="flex cursor-pointer items-start gap-2 py-1.5"
               >
@@ -936,15 +938,27 @@ function BulkModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState('');
   const [group, setGroup] = useState<GuestGroup>('Keluarga');
   const [side, setSide] = useState<GuestSide>('umum');
+  const [events, setEvents] = useState<GuestEvent[]>(() => defaultEventsForSide('umum'));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<number | null>(null);
 
-  const preview = parseBulkNames(text, group, side);
+  const dayOptions = EVENT_OPTIONS.filter((ev) => {
+    if (side === 'pria') return ev.value.startsWith('pria-');
+    if (side === 'wanita') return ev.value.startsWith('wanita-');
+    return true;
+  });
+  const showDayPicker = dayOptions.length > 1;
+
+  const preview = parseBulkNames(text, group, side, events);
 
   const save = async () => {
     if (preview.length === 0) {
       setError('Isi minimal 1 nama (satu nama per baris).');
+      return;
+    }
+    if (events.length === 0) {
+      setError('Pilih minimal 1 hari acara.');
       return;
     }
     setSaving(true);
@@ -977,13 +991,62 @@ function BulkModal({ onClose }: { onClose: () => void }) {
             <option key={g} value={g}>{g}</option>
           ))}
         </select>
-        <select value={side} onChange={(e) => setSide(e.target.value as GuestSide)} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm">
+        <select
+          value={side}
+          onChange={(e) => {
+            const next = e.target.value as GuestSide;
+            setSide(next);
+            setEvents(defaultEventsForSide(next));
+          }}
+          className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm"
+        >
           <option value="pria">Pria</option>
           <option value="wanita">Wanita</option>
-          <option value="umum">Umum (dapat 2 link)</option>
+          <option value="umum">Umum (2 link: pria + wanita)</option>
         </select>
       </div>
-      <p className="mt-2 text-xs text-stone-500">Terdeteksi: <b>{preview.length}</b> nama. Acara otomatis mengikuti sisi (bisa diubah per tamu via Edit).</p>
+
+      {showDayPicker && (
+        <div className="mt-3">
+          <label className="block text-sm font-bold">Diundang pada hari *</label>
+          <div className="mt-1 rounded-xl border border-stone-200 px-3 py-1.5">
+            {dayOptions.map((ev) => {
+              const checked = events.includes(ev.value);
+              return (
+                <label
+                  key={ev.value}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const next = checked ? events.filter((v) => v !== ev.value) : [...events, ev.value];
+                    setEvents(next);
+                    if (next.length > 0) setSide(sideFromEvents(next));
+                  }}
+                  className="flex cursor-pointer items-start gap-2 py-1.5"
+                >
+                  <span
+                    className={`mt-[3px] flex h-[13px] w-[13px] shrink-0 items-center justify-center border-[1.5px] ${
+                      checked ? 'border-emerald-900 bg-emerald-900' : 'border-stone-500 bg-white'
+                    }`}
+                  >
+                    {checked && <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} />}
+                  </span>
+                  <span>
+                    <span className="block font-serif text-[13px] leading-snug text-stone-800">{ev.card}</span>
+                    {ev.sub && <span className="block font-serif text-[12px] text-stone-500">{ev.sub}</span>}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-2 text-xs text-stone-500">
+        Terdeteksi: <b>{preview.length}</b> nama
+        {events.length > 0 && (
+          <> · Acara: <b>{events.map(eventShort).join(', ')}</b></>
+        )}
+      </p>
       {done !== null && <p className="mt-2 rounded-xl bg-green-50 p-2.5 text-xs font-bold text-green-700">Berhasil menambah {done} tamu.</p>}
       {error && <p className="mt-2 rounded-xl bg-red-50 p-2.5 text-xs text-red-700">{error}</p>}
       <div className="mt-4 flex gap-2">
